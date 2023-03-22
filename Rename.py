@@ -1,30 +1,17 @@
 import pygame
 import pygame._sdl2 as sdl2
+import eyed3
 from os import listdir as oslistdir, mkdir as osmkdir,\
     remove as osremove, chdir as oschdir, environ
 from os.path import isfile as osisfile, isdir as osisdir, join as osjoin,\
     exists as osexists, abspath as osabspath, dirname as osdirname
 from json import load, dumps
-from requests import get as rget
-from requests.exceptions import ConnectionError, ConnectTimeout
-from random import randint, choice, choices
-from datetime import datetime
 from sys import exit as sysexit, executable as sysexecutable
-from time import sleep
-from bs4 import BeautifulSoup as BS
-from html_telegraph_poster import TelegraphPoster
-from html_telegraph_poster.upload_images import upload_image, Error
-from html_telegraph_poster import errors as E
-from webbrowser import open_new
-from threading import Thread
 import re
-import pyppeteer.chromium_downloader as chromium_downloader
 #to add into hidden imports label in py2exe
 # from ctypes import windll
-# import urllib.parse as urllibp
-# from json import loads
 # from io import BytesIO
-# from requests_html import HTMLSession
+# from random import choice,choices
 #---------------------------------------------------------------
 
 class Colors:
@@ -105,7 +92,7 @@ class ENV(dict):
     __slots__ = ()      # []    -> there is no need to use more attributes
     _name = ".env"      # [str] -> is the name of the file
                         # [str] -> this is the contained text of the .env
-    _txt='decode="utf-8"\nyour_dev_api_key =\nyour_project_cx =\n'
+    _txt='decode="utf-8"\nyour_dev_api_key =\nyour_project_cx ='
 
     def __init__(self) -> None:
         """
@@ -4530,6 +4517,7 @@ class HorizontalBar(pygame.sprite.Sprite):
         
         return self.rect.inflate(4,4)
 
+
 if __name__ == "__main__":
     
     class ErrorScreen:
@@ -4565,7 +4553,9 @@ if __name__ == "__main__":
             'cncButton',    #[NormalButton]             -> button where to stop
                             #                               the download, used by 
                             #                               ed_showError()
-            'bk'            #[bool]                     -> bool that handle bk
+            'bk',           #[bool]                     -> bool that handle bk
+            '_choice',
+            '_choices'
             )
 
         def __init__(self, utilities:Utilities=utilities) -> None:
@@ -4580,6 +4570,10 @@ if __name__ == "__main__":
 
             #base settings
             self.utilities = utilities
+            
+            from random import choice,choices
+            self._choice = choice
+            self._choices = choices
 
             #blitted screen
             self.magic_screen:pygame.Surface
@@ -4613,7 +4607,7 @@ if __name__ == "__main__":
             for i in range(self._k):
 
                 #it takes a random number
-                self.numbers[i] = choice(self._nn)
+                self.numbers[i] = self._choice(self._nn)
 
                 #it lowers its position if it is still on the screen
                 if self.positions[i][1]<h:
@@ -4622,7 +4616,7 @@ if __name__ == "__main__":
                 #it resets the position if it is down outside the screen
                 else:
                     self.positions[i][:] = \
-                        choice(self._xrange),choice(self._yrange)
+                        self._choice(self._xrange),self._choice(self._yrange)
 
         def _res(self, width:int, height:int) -> None:
             """
@@ -4652,16 +4646,16 @@ if __name__ == "__main__":
             self._k = width//4
             self._yrange = range(-height//2,0)
             self._xrange = range(0,width)
-            self._speeds = choices(
+            self._speeds = self._choices(
                 range(1,10),
                 (1/18, 1/18, 1/9, 1/9, 1/3, 1/9, 1/9, 1/18, 1/18),
                 k=self._k
                 )
             
             #it updates numbers and positions
-            self.numbers = choices(self._nn,k=self._k)
+            self.numbers = self._choices(self._nn,k=self._k)
             self.positions = tuple(
-                [choice(self._xrange),yy] for yy in choices(self._yrange,k=self._k)
+                [self._choice(self._xrange),yy] for yy in self._choices(self._yrange,k=self._k)
                 )
             
         def showError(self, exception:str) -> None:
@@ -4741,10 +4735,14 @@ if __name__ == "__main__":
 
     class Song:
         def __init__(self, utilities:Utilities=utilities) -> None:
-            pass
+            self.utilities = utilities
 
         def __call__(self, stop:bool = False):
-            pass
+            self.utilities.booleans.add()
+            
+
+            
+            self.utilities.booleans.end()
     
     class Start:
         """
