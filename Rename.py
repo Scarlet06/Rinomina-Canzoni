@@ -7,7 +7,7 @@ from os.path import isfile as osisfile, isdir as osisdir, join as osjoin,\
     exists as osexists, abspath as osabspath, dirname as osdirname
 from json import load, dumps
 from sys import exit as sysexit, executable as sysexecutable
-import re
+from re import match
 #to add into hidden imports label in py2exe
 # from ctypes import windll
 # from io import BytesIO
@@ -225,7 +225,7 @@ class INI(dict):
 
                         # if key is pos / resolution, its value has to be "x,y"
                         elif i<2:
-                            k=re.match(r"-?\d+[,]-?\d+", t[self._key[i]])
+                            k=match(r"-?\d+[,]-?\d+", t[self._key[i]])
                             if not k is None:
                                 if t[self._key[i]] != k[0]:
                                     t[self._key[i]] = self._val[i]
@@ -246,7 +246,7 @@ class INI(dict):
 
                         # if the value has to be a float, so it will be checked
                         elif type(self._val[i]) is float:
-                            k=re.match(r"(\d*[.])?\d+", t[self._key[i]])
+                            k=match(r"(\d*[.])?\d+", t[self._key[i]])
                             if not k is None:
                                 if t[self._key[i]] == k[0]:
                                     t[self._key[i]] = float(t[self._key[i]])
@@ -1880,7 +1880,7 @@ class ImageButton(NormalButton):
         # These are infos property needed to make the Sprite class work as expecter
         self.image = self._button_image
         self.rect = None
-
+   
 
 class LittleMenu(pygame.sprite.Sprite):
     # pygame sprite to handle the menu for the textBox object
@@ -2190,7 +2190,7 @@ class LittleMenu(pygame.sprite.Sprite):
         if Booleans.check_g(1,'button',pygame.MOUSEBUTTONDOWN,event_list):
         # if any(event.button == 1 for event in event_list\
         #         if event.type == pygame.MOUSEBUTTONDOWN):
-            if not self.rect.collidepoint(*pos):
+            if not self.rect.collidepoint(pos):
                 self._active = False
                 return
         elif Booleans.check_k(pygame.K_ESCAPE,event_list):
@@ -2346,12 +2346,13 @@ class TextBox(pygame.sprite.Sprite):
                         #                               text, if the object is
                         #                               writable, over _wait_c1
                         #                               and over _wait_c2
-        "_LRdc"         # [list[bool]*4]            -> keeps track when
+        "_LRdc",        # [list[bool]*4]            -> keeps track when
                         #                               "Left arrow",
                         #                               "Right arrow",
                         #                               "delete" or "canc"
                         #                               button are pressed or
                         #                               not
+        "_changed"
         )
 
     button_space = 4    # [int]                     -> total space around the
@@ -2480,6 +2481,7 @@ class TextBox(pygame.sprite.Sprite):
         #setting the text of the box
         self._text = ""
         self._text_surf = []
+        self._changed = False
         if initial_text:
             self.addText(initial_text)
             
@@ -2560,6 +2562,9 @@ class TextBox(pygame.sprite.Sprite):
         """
 
         return self._littlemenu
+
+    def is_writable(self):
+        return self._writable
 
     def __str__(self) -> str:
         """
@@ -3240,6 +3245,8 @@ class TextBox(pygame.sprite.Sprite):
             )
         self._text = self._text[:self._k]+nt+self._text[self._k:]
         self._k+=1
+        if not self._changed:
+            self._changed = True
 
     def addText(self, new_text:str) -> None:
         '''
@@ -3289,6 +3296,9 @@ class TextBox(pygame.sprite.Sprite):
         else:
             self._text_surf.pop(self._k)
             self._text = self._text[:self._k]+self._text[self._k+1:]
+
+        if not self._changed:
+            self._changed = True
 
     def _pops(self) -> None:
         '''
@@ -3499,6 +3509,272 @@ class TextBox(pygame.sprite.Sprite):
         """
         
         return self.rect.inflate(4,4)
+
+    def has_changed(self) -> bool:
+        if self._changed:
+            self._changed = False
+            return True
+        return False
+
+
+class Drop(pygame.sprite.Sprite):
+    center = "center"
+
+    def __init__(self,
+        box:TextBox,
+        file:str,
+        font:pygame.font.Font,
+        length:int,
+        quantity:int = 5,
+        txt_color:str = "black",
+        bt_hover_color:str='gray',
+        bt_clicked_color:str='white',
+        utilities: Utilities=utilities
+        ) -> None:
+
+        super().__init__()
+
+        self.active = False
+        self.prev_status = False
+
+        self.utilities = utilities
+        self.quantity = quantity
+        self.length = length
+        self.box = box
+        self.font = font
+        self.colors = (txt_color, bt_hover_color, bt_clicked_color)
+        
+        self.h = font.size("A")[1]
+        self.rect = None
+        self.image = pygame.Surface((self.length,self.h*quantity),pygame.SRCALPHA)
+        self.long_image = pygame.Surface((1,1),pygame.SRCALPHA)
+        self.v_bar = VerticalBar(4,40,30,15)
+        self.bar = None
+        self.g = pygame.sprite.Group()
+
+        from ctypes import windll
+        self._hidder = lambda x: windll.kernel32.SetFileAttributesW(x, 0x02)
+        self._shower = lambda x: windll.kernel32.SetFileAttributesW(x, 0x80)
+        from re import escape,IGNORECASE
+        self._finder = lambda x,y: match(f".*{escape(x)}.*",y,IGNORECASE)
+
+        self.file = file
+        self.data = []
+        self.buttons = []
+        self.findet = []
+        self.__read()
+
+    def __bool__(self) -> bool:
+        return self.active
+
+    def refresh(
+        self,
+        font:pygame.font.Font,
+        length:int
+        ) -> None:
+
+        self.length = length
+        self.font = font
+        self.h = font.size("A")[1]
+
+        self.rect = None
+        self.image = pygame.transform.scale(self.image,(self.length,self.h*self.quantity))
+
+        x=y=0
+        for button,text in zip(self.buttons,self.findet):
+    
+            button.refresh(
+                length-self.h//2,
+                font.render(text,True,self.utilities.colors[self.colors[0]]),
+                length-self.h//2
+                )
+            
+            y+=button.init_rect(x=x,y=y).h
+            button.text_rect(self.center)
+
+        self.long_image = pygame.transform.scale(self.long_image, (length,y))
+
+        if len(self.buttons)>1:
+            self.v_bar.refresh(self.h,self.rect.h,y,self.rect.h)
+            self.v_bar.init_rect(right = self.length,y=0)
+
+    def __read(self):
+        
+        if osexists(self.file):
+            self._shower(self.file)
+
+            with open(self.file, "r", encoding=self.utilities.decoder) as file:
+                self.data.extend(file.read().split("\n"))
+            
+            self._hidder(self.file)
+    
+    def __write(self, data:str) -> None:
+
+        if self.data:
+            self.__append(data)
+        else:
+            with open(self.file, "w", encoding=self.utilities.decoder) as file:
+                file.write(data)
+        
+        self._hidder(self.file)
+        self.data.append(data)
+
+    def __append(self, data:str) -> None:
+
+        self._shower(self.file)
+
+        with open(self.file, "a", encoding=self.utilities.decoder) as file:
+            file.write("\n"+data)
+        
+    def __find(self) -> None:
+        findet = filter(lambda y:self._finder(str(self.box),y),self.data)
+        if findet != self.findet:
+            self.findet = findet
+
+            self.buttons = [
+                NormalButton(
+                    self.length-self.h//2,
+                    self.font.render(f,True,self.utilities.colors[self.colors[0]]),
+                    self.length-self.h//2,
+                    bt_normal_color=self.colors[1],
+                    bt_hover_color=self.colors[2],
+                    bt_pressed_color=self.colors[2],
+                    func=self.box.replaceText,
+                    args=(f,)
+                ) for f in findet
+                ]
+            x=y=0
+            for bt in self.buttons:
+                y+=bt.init_rect(x=x,y=y).h
+                bt.text_rect(self.center)
+            
+            self.long_image = pygame.transform.scale(self.long_image, (self.length,y))
+            
+            if len(self.buttons)>1:
+                self.v_bar.refresh(self.h//3,self.rect.h,y,self.rect.h)
+                self.v_bar.init_rect(right = self.length,y=0)
+                self.bar = self.v_bar
+            else:
+                self.bar = None
+            
+            self.g.empty()
+            self.g.add(self.buttons)
+
+    def init_rect(self, **kwargs) -> pygame.Rect:
+        '''
+        it calls the standard function for pygame.Surface
+        and passes to it all the arguments
+        
+        INPUT:
+        - **kwargs      -> syntax for pygame.Surf().get_rect()
+        
+        OUTPUT:
+        - [pygame.Rect] -> is the rect of the object
+        '''
+
+        self.rect = self.image.get_rect(**kwargs)
+        return self.rect
+        
+    def get_rect(self) -> pygame.Rect:
+        '''
+        Standard function for pygame.Surface,
+        but in the right position in the screen
+        
+        OUTPUT:
+        - [pygame.Rect] -> is the rect of the object
+        '''
+
+        return self.rect
+
+    def update(
+        self,
+        event_list:list[pygame.event.Event],
+        pos:tuple[int,int]
+        ) -> None:
+        """
+        It checks every event to update the button 
+
+        INPUT: 
+        - event_list [list[pygame.event.Event]]     -> list of all the events
+                                                        from the program.
+        - pos [tuple[int,int]]                      -> position of the mouse
+        - colors [Colors]                           -> the Colors used for
+                                                        the image
+        """
+
+        hover = self.rect.collidepoint(pos)
+        clicked = self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONDOWN,event_list)
+        if self.active and hover and clicked:
+            self.box.update(event_list,self.box.get_rect().center)
+        else:
+            self.box.update(event_list,pos)
+
+        if self.box.has_changed():
+            self.__find()
+
+        self.image.fill(self.utilities.colors.transparent)
+
+        if self.prev_status ^ self.box.is_writable():
+            self.active = self.prev_status = self.box.is_writable()
+
+        if not self.active:
+            return
+
+
+        if clicked:
+            if not (hover or self.box.get_rect().collidepoint(pos)):
+                print(hover)
+                self.active = False
+                return
+        elif self.utilities.booleans.check_k(pygame.K_ESCAPE,event_list):
+            self.active = False
+            return
+        
+        if self.bar:
+            self.bar.update(event_list, (pos[0]-self.rect.x,pos[1]-self.rect.y))
+
+            self.g.update(event_list, (pos[0]-self.rect.x,pos[1]-self.rect.y-float(self.bar)))
+        
+        else:
+            self.g.update(event_list, (pos[0]-self.rect.x,pos[1]-self.rect.y))
+
+        self.long_image.fill(self.utilities.colors.transparent)
+
+        self.g.draw(self.long_image)
+        if self.bar:
+            self.image.blit(self.long_image,(0,float(self.bar)))
+            self.bar.draw(self.image)
+        else:
+            self.image.blit(self.long_image,(0,0))
+
+    def draw(self, screen:pygame.Surface) -> None:
+        """
+        It draws the box on the given surface
+        with its corresponding rect position
+
+        INPUT: 
+         - screen [pygame.Surface]  -> surface where to blit the button
+        """
+
+        #drawing the image surface on the given screen
+        self.box.draw(screen)
+        screen.blit(self.image, self.rect)
+
+    def displayer(self) -> pygame.Rect:
+        """
+        It returns the rect of this object but inflated, by 2 px for each line
+        
+        OUTPUT:
+        - [pygame.Rect] -> is the inflated rect of the object
+        """
+        
+        return self.rect.inflate(4,4)
+
+    def exit(self) -> None:
+        t = str(self.box)
+        if t not in self.data:
+            print(t, self.data)
+            self.__write(t)
 
 class RectengleText(pygame.sprite.Sprite):
     #This object is used to display some text in a rectangular space with fixed
@@ -4739,8 +5015,83 @@ if __name__ == "__main__":
 
         def __call__(self, stop:bool = False):
             self.utilities.booleans.add()
-            
 
+            t = pygame.font.SysFont("corbel",2)
+            test = TextBox(22, pygame.font.SysFont("corbel",3), initial_text="ciao", empty_text="riempimi", max_char=500, bar_color="black",func=print,args=("fatto",))
+            r = test.init_rect(x=0,y=0)
+            drop = Drop(test,"test.txt",t,r.w,2)
+            btn = NormalButton(0,pygame.Surface((10,10)),func=drop.exit)
+            little_menu = LittleMenu(t)
+
+            self.utilities.booleans[1] = True
+            while self.utilities.booleans[1]:
+                self.utilities.booleans[1] = False
+
+                screen_rect = self.utilities.screen.get_rect()
+
+                button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+                little_font = pygame.font.Font(self.utilities.magic,button_heigh)
+                font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
+            
+                test.refresh(screen_rect.w/5*4, font)
+                r = test.init_rect(centerx=screen_rect.centerx,y=screen_rect.h/4)
+                drop.refresh(little_font,r.w)
+                drop.init_rect(topleft = r.bottomleft)
+                little_menu.refresh(little_font)
+
+                btn.refresh(screen_rect.w/4,font.render("Ecco",True,self.utilities.colors["black"]),r.w)
+                btn.init_rect(centerx = screen_rect.w/2, bottom=screen_rect.bottom)
+                btn.text_rect("center")
+            
+                self.utilities.booleans[0] = True
+                while self.utilities.booleans[0]:
+                    self.utilities.screen.tick()
+
+                    # events for the action
+                    pos = pygame.mouse.get_pos()
+                    event_list = pygame.event.get()
+                    self.utilities.booleans.update_start(event_list,True)
+
+                    if not self.utilities.booleans[0]:
+                        break
+
+                    for event in event_list:
+                        self.utilities.booleans.update_resizing(event)
+                    self.utilities.booleans.update_booleans()
+
+                    if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                        break
+                    
+                    if test:
+                        test.opened_little_menu()
+                        little_menu.init(*pos, screen_rect, copy=test.little_copy, cut=test.little_cut, paste=test.little_paste)
+                        little_menu.update(event_list,pos)
+
+                    elif little_menu:
+                        little_menu.update(event_list,pos)
+
+                    elif drop:
+                        drop.update(event_list,pos)
+                    else:
+                        drop.update(event_list,pos)
+                        btn.update(event_list,pos)
+                    
+                    
+                    if little_menu:
+                        self.utilities.screen.draw(little_menu)
+                        pygame.display.update(little_menu.get_rect())
+
+                    else:
+                        self.utilities.screen.fill(self.utilities.colors['background'])
+
+                        if drop:
+                            self.utilities.screen.draw(drop)
+                        else:
+                            self.utilities.screen.draw(test)
+                        
+                        self.utilities.screen.draw(btn)
+                        
+                        pygame.display.update()
             
             self.utilities.booleans.end()
     
@@ -4868,6 +5219,7 @@ if __name__ == "__main__":
                     fontone = pygame.font.Font(self.utilities.magic,button_heigh*3)
                     font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
                     
+                    
                     if screen_rect.w <= little_font.size(counter.format(with_files,1))[0]+little_width+font.size(sub_t)[0]:
                         button_heigh = int(button_heigh*0.7)
                         little_font = pygame.font.Font(self.utilities.magic,button_heigh)
@@ -4886,6 +5238,8 @@ if __name__ == "__main__":
                     if (button_w+NormalButton.button_space)*4>screen_rect.w:
                         smallfont = pygame.font.SysFont(self.utilities.corbel,int(button_heigh*(screen_rect.w/4-8)/button_w))
                     
+                    little_menu.refresh(smallfont)
+
                     title_s[0] = fontone.render(title, True, self.utilities.colors["black"])
                     title_s[1] = title_s[0].get_rect(x=button_heigh,y=space)
                     subt_s[0] = font.render(sub_t,False,self.utilities.colors["black"])
@@ -4970,7 +5324,6 @@ if __name__ == "__main__":
                         current_s[0] = smallfont.render(counter.format(without_files,len(folders_b)), True, self.utilities.colors["red"])
 
                     current_s[1] = current_s[0].get_rect(right=little_surface[1].right,bottom=subt_s[1].bottom)
-
 
                 #it search for items
                 if self.search:
@@ -5082,8 +5435,8 @@ if __name__ == "__main__":
                                 little_surface[0].blit(bigger_surface,(0,0))
                             self.utilities.screen.blit(little_surface)
             
-                    # that's t oupdate every sprite
-                    pygame.display.update()
+                        # that's t oupdate every sprite
+                        pygame.display.update()
 
             #reset of self.search
             self.search = True
