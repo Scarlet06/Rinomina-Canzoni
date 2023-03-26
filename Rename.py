@@ -5312,7 +5312,7 @@ if __name__ == "__main__":
                         bigger_surface = pygame.transform.scale(bigger_surface,(little_width,y))
 
                         if y>little_surface[1].h:
-                            v_bar.refresh(max(VerticalBar.button_length, little_surface[1].h//4),little_surface[1].h,y,little_surface[1].h)
+                            v_bar.refresh((screen_rect.w-little_surface[1].w)//3,little_surface[1].h,y,little_surface[1].h)
                             v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
                             bar = v_bar
                         else:
@@ -5354,8 +5354,8 @@ if __name__ == "__main__":
                         bigger_surface = pygame.transform.scale(bigger_surface,(little_width,y))
 
                         if y>little_surface[1].h:
-                            v_bar.refresh(max(VerticalBar.button_length, little_surface[1].h//4),little_surface[1].h,y,little_surface[1].h, start_bar_init=False)
-                            v_bar.init_rect(x=screen_rect.w-screen_rect.w/40,y=little_surface[1].y)
+                            v_bar.refresh((screen_rect.w-little_surface[1].w)//4,little_surface[1].h,y,little_surface[1].h,False)
+                            v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
                             bar = v_bar
                         else:
                             bar = None
