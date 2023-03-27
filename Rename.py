@@ -2687,13 +2687,15 @@ class TextBox(pygame.sprite.Sprite):
                     elif not self._writable:
                         self._clicked = hover
                         if self._selected or self._selectable:
-                            self._k = self._kk 
+                            self._k = self._kk
+                            
                             self._selected = self._selectable = False
 
                     # This could be else, but it saves some iteration(?)
                     # I've to remember this in case of bugs
                     elif self._selected or self._selectable: 
-                        self._k = self._kk 
+                        self._k = self._kk
+                        
                         self._selected = self._selectable = False
             
                 # That's the right button, I coud do the same as for
@@ -2712,7 +2714,7 @@ class TextBox(pygame.sprite.Sprite):
                             self._writable = True
 
                     elif self._selected or self._selectable:
-                        self._k = self._kk 
+                        self._k = self._kk
                         self._selected = self._selectable = False
 
             # Only if selectable is True (meaning we have clicked the left
@@ -2789,14 +2791,14 @@ class TextBox(pygame.sprite.Sprite):
                     #saving some litle iteration by putting `and self.writable`
                     elif not hover and self._writable:
                         self._selectable = self._selected = self._writable = False
-                        self._k = self._kk 
+                        self._k = self._kk = min(self._kk,len(self._text))
 
                 # it checks the right mouse button only it is _writable
                 # and the mouse is hovering
                 elif event.button == 3 and self._writable and not hover:
 
                     if self._selected or self._selectable:
-                        self._k = self._kk 
+                        self._k = self._kk
                         self._selected = self._selectable = False
 
                     self._writable = False
@@ -3245,6 +3247,7 @@ class TextBox(pygame.sprite.Sprite):
             )
         self._text = self._text[:self._k]+nt+self._text[self._k:]
         self._k+=1
+        
         if not self._changed:
             self._changed = True
 
@@ -3516,6 +3519,9 @@ class TextBox(pygame.sprite.Sprite):
             return True
         return False
 
+    def keep_alive(self) -> None:
+        if not self._writable:
+            self._writable = True
 
 class Drop(pygame.sprite.Sprite):
     center = "center"
@@ -3703,11 +3709,10 @@ class Drop(pygame.sprite.Sprite):
         """
 
         hover = self.rect.collidepoint(pos)
-        clicked = self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONDOWN,event_list)
+        clicked = self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONDOWN,event_list) or self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONUP,event_list)
+        self.box.update(event_list,pos)
         if self.active and hover and clicked:
-            self.box.update(event_list,self.box.get_rect().center)
-        else:
-            self.box.update(event_list,pos)
+            self.box.keep_alive()
 
         if self.box.has_changed():
             self.__find()
@@ -3719,11 +3724,9 @@ class Drop(pygame.sprite.Sprite):
 
         if not self.active:
             return
-
-
+    
         if clicked:
             if not (hover or self.box.get_rect().collidepoint(pos)):
-                print(hover)
                 self.active = False
                 return
         elif self.utilities.booleans.check_k(pygame.K_ESCAPE,event_list):
@@ -3773,7 +3776,6 @@ class Drop(pygame.sprite.Sprite):
     def exit(self) -> None:
         t = str(self.box)
         if t not in self.data:
-            print(t, self.data)
             self.__write(t)
 
 class RectengleText(pygame.sprite.Sprite):
