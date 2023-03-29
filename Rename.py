@@ -2,12 +2,13 @@ import pygame
 import pygame._sdl2 as sdl2
 import eyed3
 from os import listdir as oslistdir, mkdir as osmkdir,\
-    remove as osremove, chdir as oschdir, environ
+    remove as osremove, chdir as oschdir, rename as osrename, environ
 from os.path import isfile as osisfile, isdir as osisdir, join as osjoin,\
     exists as osexists, abspath as osabspath, dirname as osdirname
 from json import load, dumps
 from sys import exit as sysexit, executable as sysexecutable
-from re import match
+from re import match, findall
+from functools import wraps
 #to add into hidden imports label in py2exe
 # from ctypes import windll
 # from io import BytesIO
@@ -3729,7 +3730,7 @@ class Drop(pygame.sprite.Sprite):
             if not (hover or self.box.get_rect().collidepoint(pos)):
                 self.active = False
                 return
-        elif self.utilities.booleans.check_k(pygame.K_ESCAPE,event_list):
+        elif self.utilities.booleans.check_k(pygame.K_RETURN,event_list):
             self.active = False
             return
         
@@ -4797,6 +4798,190 @@ class HorizontalBar(pygame.sprite.Sprite):
 
 
 if __name__ == "__main__":
+    class Song:
+
+        def __init__(self, path:str, file:str) -> None:
+            self.path = path
+            self.file = file
+            self.mp3:eyed3.AudioFile = None
+
+        @staticmethod
+        def __check(func):
+
+            @wraps(func)
+            def checker(self,*args,**kwargs):
+
+                if not self.mp3:
+                    self.mp3 = eyed3.load(osjoin(self.path,self.file))
+                return func(self,*args,**kwargs)
+            
+            return checker
+
+        @property
+        @__check
+        def title(self) -> str:
+            return self.mp3.tag.title
+
+        @title.setter
+        @__check
+        def title(self,title:str) -> None:
+            self.mp3.tag.title = title
+
+        @property
+        @__check
+        def album(self) -> str:
+            return self.mp3.tag.album
+
+        @album.setter
+        @__check
+        def album(self,album:str) -> None:
+            self.mp3.tag.album = album
+
+        @property
+        @__check
+        def album_artist(self) -> str:
+            return self.mp3.tag.album_artist
+
+        @album_artist.setter
+        @__check
+        def album_artist(self,album_artist:str) -> None:
+            self.mp3.tag.album_artist = album_artist
+
+        @property
+        @__check
+        def artist(self) -> str:
+            return self.mp3.tag.artist
+
+        @artist.setter
+        @__check
+        def artist(self,artist:str) -> None:
+            self.mp3.tag.artist = artist
+
+        @property
+        @__check
+        def artist_origin(self) -> str:
+            return self.mp3.tag.artist_origin
+
+        @artist_origin.setter
+        @__check
+        def artist_origin(self,artist_origin:str) -> None:
+            self.mp3.tag.artist_origin = artist_origin
+
+        @property
+        @__check
+        def composer(self) -> str:
+            return self.mp3.tag.composer
+
+        @composer.setter
+        @__check
+        def composer(self,composer:str) -> None:
+            self.mp3.tag.composer = composer
+
+        @property
+        @__check
+        def genre(self) -> str:
+            return self.mp3.tag.genre
+
+        @genre.setter
+        @__check
+        def genre(self,genre:str) -> None:
+            self.mp3.tag.genre = genre
+
+        @property
+        @__check
+        def track_num(self) -> tuple[int,int]:
+            t = self.mp3.tag.track_num
+            return t[0],t[1]
+
+        @track_num.setter
+        @__check
+        def track_num(self,this:int,total:int) -> None:
+            self.mp3.tag.track_num = (this,total)
+
+        @property
+        @__check
+        def disc_num(self) -> tuple[int,int]:
+            t = self.mp3.tag.disc_num
+            return t[0],t[1]
+
+        @disc_num.setter
+        @__check
+        def disc_num(self,this:int,total:int) -> None:
+            self.mp3.tag.disc_num = (this,total)
+
+        @property
+        @__check
+        def comments(self) -> list[tuple[str,str,bytes]]:
+            return [(i.description,i.text) for i in self.mp3.tag.comments]
+        
+        @comments.deleter
+        @__check
+        def comments(self, description:str|None=None) -> None:
+            if description:
+                self.mp3.tag.comments.remove(description)
+                return
+            for i in self.commenti:
+                self.mp3.tag.comments.remove(i.description)
+
+        @comments.setter
+        @__check
+        def comments(self, data:tuple[str,str]) -> None:
+            "data is a tuple of description and text"
+            description,text = data
+            self.mp3.tag.comments.set(text,description)
+
+        @property
+        @__check
+        def images(self) -> list[tuple[str,str,bytes]]:
+            return [(i.description,i.text) for i in self.mp3.tag.images]
+        
+        @images.deleter
+        @__check
+        def images(self, description:str|None=None) -> None:
+            if description:
+                self.mp3.tag.images.remove(description)
+                return
+            for i in self.images:
+                self.mp3.tag.images.remove(i.description)
+
+        @images.setter
+        @__check
+        def images(self, data:tuple[str, bytes|None, str]) -> None:
+            """
+            data is description:str, img_data:bytes|None, mime_type:str
+            mime_type has to be the type of the file image
+            """
+            description, img_data, mime_type = data
+            self.mp3.tag.images.set(3,img_data,bytes(f"image/{mime_type}"), description, None)
+        
+        @property
+        @__check
+        def time_secs(self) -> str:
+            t = self.mp3.info.time_secs
+            return f"{t//60}:{t%60}"
+        
+        @property
+        @__check
+        def size_bytes(self) -> str:
+            return f"{self.mp3.info.size_bytes/1024:.2f} Kb"
+
+        def close(self, how=None) -> None:
+            if self.mp3:
+                self.mp3.tag.save()
+                self.mp3=None
+
+            if how:
+                t = self.newname(how)
+                if t==self.file:
+                    return
+                if osexists(osjoin(self.path,t)):
+                    raise NameError(f"{t} already exists")
+                osrename(osjoin(self.path,self.file),osjoin(self.path,t))
+
+        def newname(self,how):
+            #how = "{artist} - {album} - {title}"
+            print("how do I do it?")
+            return f"{how.format(**{t:getattr(self.mp3.tag,t) for t in findall(r'{(.*?)}',how)})}.mp3"
     
     class ErrorScreen:
         # This class is used to show any kind of error
@@ -5011,15 +5196,30 @@ if __name__ == "__main__":
 
             self.utilities.booleans.end()
 
-    class Song:
+    class Settings:
         def __init__(self, utilities:Utilities=utilities) -> None:
             self.utilities = utilities
 
-        def __call__(self, stop:bool = False):
+        def __call__(self) -> None:
             self.utilities.booleans.add()
 
+            rename_f = "Rinomina file"
+            album = "album"
+            artist = "artist"
+
+
+            self.utilities.booleans.end()
+
+    class EditSong:
+        def __init__(self, utilities:Utilities=utilities) -> None:
+            self.utilities = utilities
+
+        def __call__(self, wait:bool = False):
+            self.utilities.booleans.add()
+            self.wait = wait
+
             t = pygame.font.SysFont("corbel",2)
-            test = TextBox(22, pygame.font.SysFont("corbel",3), initial_text="ciao", empty_text="riempimi", max_char=500, bar_color="black",func=print,args=("fatto",))
+            test = TextBox(22, pygame.font.SysFont("corbel",3), initial_text="ciao", empty_text="riempimi", max_char=500, bar_color="black")
             r = test.init_rect(x=0,y=0)
             drop = Drop(test,"test.txt",t,r.w,2)
             btn = NormalButton(0,pygame.Surface((10,10)),func=drop.exit)
@@ -5110,7 +5310,7 @@ if __name__ == "__main__":
             self.path = osabspath(utilities.settings["directory"])
             self.directory_box:TextBox
             self.search = True
-            self.song = Song(utilities)
+            self.song = EditSong(utilities)
             
             self.arr_back = pygame.image.load("./Images/arr_back.png").convert_alpha()
             self.circle = pygame.image.load("./Images/circle.png").convert_alpha()
@@ -5446,3 +5646,9 @@ if __name__ == "__main__":
 
     utilities.init()
     Start(utilities).run()
+
+    # s = Song(".","Test.mp3")
+    # print(s.album)
+    # print(s.comments)
+    # # s.comments = "a","b"
+    # # s.close()
