@@ -5283,6 +5283,7 @@ if __name__ == "__main__":
                 "Numero Disco"
             )
             b = [i=="1" for i in f'{self.utilities.settings["drop"]:b}']
+            print(self.utilities.settings["drop"])
             def change(b,i):
                 b[i]=not b[i]
 
@@ -5419,9 +5420,9 @@ if __name__ == "__main__":
                         pygame.display.update()
 
             if self.utilities.settings["rename"] != example:
-                print(self.utilities.settings["rename"])
                 self.utilities.settings["rename"] = result.format(example,**arg_b)
-                print(self.utilities.settings["rename"])
+            self.utilities.settings["drop"] = int("".join(str(int(o)) for o in b), base=2)
+            print(self.utilities.settings["drop"])
 
             self.utilities.booleans.end()
 
@@ -5731,7 +5732,7 @@ if __name__ == "__main__":
 
                         if y>little_surface[1].h:
                             try:
-                                v_bar.refresh((screen_rect.w-little_surface[1].w)//4,little_surface[1].h,y,little_surface[1].h)
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h)
                             except:
                                 v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h)
                             v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
@@ -5776,7 +5777,7 @@ if __name__ == "__main__":
 
                         if y>little_surface[1].h:
                             try:
-                                v_bar.refresh((screen_rect.w-little_surface[1].w)//4,little_surface[1].h,y,little_surface[1].h,False)
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h,False)
                             except:
                                 v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h,False)
                             v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
