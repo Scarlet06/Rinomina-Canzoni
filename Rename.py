@@ -10,6 +10,7 @@ from sys import exit as sysexit, executable as sysexecutable
 from re import match, findall
 from functools import wraps
 #to add into hidden imports label in py2exe
+# from string import Formatter
 # from ctypes import windll
 # from io import BytesIO
 # from random import choice,choices
@@ -145,10 +146,8 @@ class INI(dict):
         "resolution",
         "full_screen",
         "night_mode",
-        "pattern",
-        "order",
-        "save",
-        "character",
+        "drop",
+        "rename",
         "directory"
         ) 
     _val = (                    # [tuple[str|float]]    -> tuple of value for
@@ -156,10 +155,8 @@ class INI(dict):
         "858,480",              #                           corresponding key
         0,                      #                           in the same index
         0,
-        ".mp3",
-        0000,
-        0000,
-        '-',
+        0b011000100,
+        '{title} - {artist} - {album}',
         '.'
         )
     _dim = '{},{}'              # [str]                 -> place to put pos and
@@ -175,11 +172,9 @@ class INI(dict):
         ';la risoluzione dello schermo rappresenta le dimensioni w,h della finestra\n'\
         ';il full screen con bordi è attivo se fissato a 1\n;la modalità notte è attiva se fissato a 1\n\n'\
         '[Folder]\ndirectory = {directory}\n;directory è la cartella in cui il programma cerca le informazioni\n\n'\
-        '[Settings]\npattern = {pattern}\norder = {order}\nsave = {save}\ncharacter = {character}\n'\
-        ';pattern è il tipo del file (sequenza di caratteri cercati nella parte finale del nome del file)\n'\
-        ';order è l\'ordine di informazioni utilizzate per comporre il nome del file ci sono massimo 4 elementi di valore 0 <-> posizione ignorata (e successive), 1 <-> titolo, 2 <-> artista, 3 <-> album, 4 <-> genere\n'\
-        ';list è per ogni posizione (come sopra ecetto il "-1") 0 se non si vuole salvare l\'iformazione della riga corrispondente, 1 altrimenti\n'\
-        ';character è la sequenza di simboli che si vuole adoperare per separare tutte le informazioni per definire i nomi dei file'
+        '[Settings]\nrename = {rename}\ndrop = {drop}\n'\
+        ';rename è la stringa utilizzata per rinominare i file sostituendo le parole contenute tra le parentesi graffe con l\'informazione presente nell\'audio\n'\
+        ';drop è un numero che rappresenta (in forma binaria) quali informazioni verranno salvate in un documento apposito'\
 
     def __init__(self, decoder:str) -> None:
         """
@@ -4889,25 +4884,42 @@ if __name__ == "__main__":
 
         @property
         @__check
-        def track_num(self) -> tuple[int,int]:
+        def track_num(self) -> tuple[int,int|None]:
             t = self.mp3.tag.track_num
             return t[0],t[1]
 
         @track_num.setter
         @__check
-        def track_num(self,this:int,total:int) -> None:
-            self.mp3.tag.track_num = (this,total)
+        def track_num(self,data:tuple[int,int|None]|int) -> None:
+            #this, total = data
+            self.mp3.tag.track_num = data#(this,total)
 
         @property
         @__check
-        def disc_num(self) -> tuple[int,int]:
+        def disc_num(self) -> tuple[int,int|None]:
             t = self.mp3.tag.disc_num
             return t[0],t[1]
 
         @disc_num.setter
         @__check
-        def disc_num(self,this:int,total:int) -> None:
-            self.mp3.tag.disc_num = (this,total)
+        def disc_num(self,data:tuple[int,int|None]|int) -> None:
+            #this, total = data
+            self.mp3.tag.disc_num = data#(this,total)
+
+        @property
+        @__check
+        def recording_date(self) -> None:
+            return self.mp3.tag.recording_date
+        
+        @recording_date.setter
+        @__check
+        def recording_date(self,data:tuple[int,...]) -> None:
+            year,*data = data
+            date = str(year)
+            mode = ("-{}","-{}","T{}",":{}",":{}")
+            for d,m in zip(data,mode):
+                date+=m.format(d)
+            self.mp3.tag.recording_date = date
 
         @property
         @__check
@@ -4964,6 +4976,7 @@ if __name__ == "__main__":
         @__check
         def size_bytes(self) -> str:
             return f"{self.mp3.info.size_bytes/1024:.2f} Kb"
+
 
         def close(self, how=None) -> None:
             if self.mp3:
@@ -5152,7 +5165,7 @@ if __name__ == "__main__":
             for _ in range(360):
                 self.utilities.screen.tick()
 
-                # lets check if some event is happening
+                # lets https://tic80.com/play?cart=3245 if some event is happening
                 event_list = pygame.event.get()
                 if self.utilities.booleans.check_1(pygame.QUIT, event_list):
                     self.utilities.screen.quit()
@@ -5200,13 +5213,215 @@ if __name__ == "__main__":
         def __init__(self, utilities:Utilities=utilities) -> None:
             self.utilities = utilities
 
-        def __call__(self) -> None:
+        def __call__(self, *args, **kwargs) -> None:
             self.utilities.booleans.add()
 
-            rename_f = "Rinomina file"
-            album = "album"
-            artist = "artist"
+            from string import Formatter
 
+            class MissingFormatter(Formatter):
+                def get_value(self, key, args, kwds):
+                    if key in kwds:
+                        return kwds[key]
+                    return key
+                
+                def format(self,s:str,*args,**kwargs):
+                        result = ""
+                        while "{" in s:
+                            t = s.index("{")
+                            result+=s[:t].replace("}","")
+                            s = s[t:]
+                            if "}" in s:
+                                tt = s.index("}")
+                                try:
+                                    result+=super().format(s[:tt+1],*args,**kwargs)
+                                except:
+                                    s = s[1:]
+                                else:
+                                    s = s[tt+1:]
+                            else:
+                                result+=s[1:]
+                                s=""
+
+                        return result+s.replace("}","")
+                        
+
+            class ResultFormatter(MissingFormatter):
+                def get_value(self, key, args, kwds):
+                    if key in kwds:
+                        return f"{{{key}}}"
+                    return key
+                
+            missing = MissingFormatter()
+            result = ResultFormatter()
+
+            font = pygame.font.SysFont("corbel",3)
+
+            settings = "SETTINGS"
+            settings_s = [None,None]
+            explain_b = "Seleziona quali di questi dati si vuole tenere la drop table"
+            explain_b = RectengleText(100,"gray",0,font,explain_b,"black")
+            arg_b = {
+                "title":"Sweet Dreams",
+                "album":"Single",
+                "artist":"We Are Magonia",
+                "album_artist":None,
+                "artist_origin": "Eurythmics",
+                "composer":"Annie Lennox, Dave Stewart",
+                "genre":"Remix",
+                "track_num": (None,None),
+                "disc_num":(None,None)
+            }
+            arg=(
+                "Titolo",
+                "Album",
+                "Artista",
+                "Artista album",
+                "Artista originale",
+                "Compositore",
+                "Genere",
+                "Numero Traccia",
+                "Numero Disco"
+            )
+            b = [i=="1" for i in f'{self.utilities.settings["drop"]:b}']
+            def change(b,i):
+                b[i]=not b[i]
+
+            check_b = tuple(
+                [CheckButton(4,j,func=change,args=(b,i)),None,None]
+                for i,j in enumerate(b)
+            )
+            
+            explain_t = "Scrivi come vuoi rinominare ciascun file .mp3. Inserisci tra parentesi graffe {} i metadati del file audio scelti tra: "
+            for ar in arg_b:
+                explain_t+=f"-{ar} "
+                
+            explain_t = RectengleText(100,"gray",0,font,explain_t,"black")
+
+            example = self.utilities.settings["rename"]
+            t = TextBox(4,font,example,"Lascia vuoto per non rinominare",writable=True)
+            t.init_rect(x=0,y=0)
+            example_s = [None,None]
+
+            q = "Torna indietro"
+            s = pygame.Surface((1,1))
+            q_b = NormalButton(3,s, func=self.utilities.booleans.breaker)
+
+            little_menu = LittleMenu(font)
+            g = pygame.sprite.Group(c[0] for c in check_b)
+            g.add(t,q_b, explain_t,explain_b)
+            del s, ar
+
+            self.utilities.booleans[1] = True
+            while self.utilities.booleans[1]:
+                self.utilities.booleans[1] = False
+                
+                screen_rect = self.utilities.screen.get_rect()
+                centerx = screen_rect.w/2
+                width = screen_rect.w/6*5
+
+                button_heigh = min(screen_rect.w//20,screen_rect.h//10)
+                bigger_font = pygame.font.SysFont(self.utilities.corbel,button_heigh,True)
+                font = pygame.font.SysFont(self.utilities.corbel,button_heigh//2)
+                little_font = pygame.font.SysFont(self.utilities.corbel,button_heigh//3)
+                
+                if bigger_font.size(settings)[0]>screen_rect.w:
+                    button_heigh//=2
+                    bigger_font,font = font, little_font
+                    little_font = pygame.font.SysFont(self.utilities.corbel,button_heigh//2)
+                
+                button_heigh//=2
+                settings_s[0] = bigger_font.render(settings,True,self.utilities.colors["black"])
+                settings_s[1] = settings_s[0].get_rect(y=button_heigh//2,centerx = centerx)
+
+                explain_t.refresh(width,font)
+                r = explain_t.init_rect(centerx=centerx, y = settings_s[1].bottom+button_heigh)
+                h = little_font.size(arg[0])[1]
+                if max(little_font.size(a)[0]+h*2 for a in arg)>centerx:
+                    little_font = pygame.font.SysFont(self.utilities.corbel,button_heigh//6)
+                    h = little_font.size(arg[0])[1]
+                t.refresh(width,font)
+                r = t.init_rect(centerx=centerx,centery=r.bottom+button_heigh)
+
+                example_s[0] = little_font.render(missing.format(example,**arg_b),True,self.utilities.colors["black"])
+                example_s[1] = example_s[0].get_rect(centerx=centerx, centery=r.bottom+button_heigh)
+
+                explain_b.refresh(width,font)
+                r = explain_b.init_rect(centerx=centerx, centery = example_s[1].bottom+button_heigh*2)
+                
+                bottom = r.bottom
+                for i,check in enumerate(check_b):
+                    if i%2:
+                        x+= centerx
+                    else:
+                        x=centerx/2-button_heigh
+                        y=bottom + h
+                    check[0].refresh(h)
+                    r = check[0].init_rect(x=x,centery=y)
+                    check[1] = little_font.render(arg[i],True,self.utilities.colors["black"])
+                    bottom = r.bottom
+                    check[2] = check[1].get_rect(x = r.right+h/2, bottom=bottom)
+
+                q_b.refresh(0,font.render(q,True,self.utilities.colors["black"]))
+                q_b.init_rect(centerx=centerx,y=bottom+button_heigh)
+                q_b.text_rect("center")
+
+                little_menu.refresh(little_font)
+
+                del bottom,r,h,width, font, bigger_font
+
+                self.utilities.booleans[0] = True
+                while self.utilities.booleans[0]:
+                    self.utilities.screen.tick()
+
+                    # events for the action
+                    pos = pygame.mouse.get_pos()
+                    event_list = pygame.event.get()
+                    self.utilities.booleans.update_start(event_list,True)
+
+                    if not self.utilities.booleans[0]:
+                        break
+
+                    for event in event_list:
+                        self.utilities.booleans.update_resizing(event)
+                    self.utilities.booleans.update_booleans()
+
+                    if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                        break
+                    
+                    if t:
+                        t.opened_little_menu()
+                        little_menu.init(*pos, screen_rect, copy=t.little_copy, cut=t.little_cut, paste=t.little_paste)
+                        little_menu.update(event_list,pos)
+
+                    elif little_menu:
+                        little_menu.update(event_list,pos)
+
+                    else:
+                        g.update(event_list,pos)
+                    
+                    if example != str(t):
+                        example = str(t)
+                        example_s[0] = little_font.render(missing.format(example,**arg_b),True,self.utilities.colors["black"])
+                        example_s[1] = example_s[0].get_rect(centerx=centerx, bottom=example_s[1].bottom)
+                        
+                    if little_menu:
+                        self.utilities.screen.draw(little_menu)
+                        pygame.display.update(little_menu.get_rect())
+                    else:
+                        #colore + titolo
+                        self.utilities.screen.fill(self.utilities.colors['background'])
+                        
+                        self.utilities.screen.blit(*(c[1:] for c in check_b),example_s,settings_s)
+
+                        self.utilities.screen.draw(g)
+                        
+                        # that's t oupdate every sprite
+                        pygame.display.update()
+
+            if self.utilities.settings["rename"] != example:
+                print(self.utilities.settings["rename"])
+                self.utilities.settings["rename"] = result.format(example,**arg_b)
+                print(self.utilities.settings["rename"])
 
             self.utilities.booleans.end()
 
@@ -5310,7 +5525,8 @@ if __name__ == "__main__":
             self.path = osabspath(utilities.settings["directory"])
             self.directory_box:TextBox
             self.search = True
-            self.song = EditSong(utilities)
+            self.song = Settings(utilities)
+            # self.song = EditSong(utilities)
             
             self.arr_back = pygame.image.load("./Images/arr_back.png").convert_alpha()
             self.circle = pygame.image.load("./Images/circle.png").convert_alpha()
@@ -5514,7 +5730,10 @@ if __name__ == "__main__":
                         bigger_surface = pygame.transform.scale(bigger_surface,(little_width,y))
 
                         if y>little_surface[1].h:
-                            v_bar.refresh((screen_rect.w-little_surface[1].w)//3,little_surface[1].h,y,little_surface[1].h)
+                            try:
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//4,little_surface[1].h,y,little_surface[1].h)
+                            except:
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h)
                             v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
                             bar = v_bar
                         else:
@@ -5556,7 +5775,10 @@ if __name__ == "__main__":
                         bigger_surface = pygame.transform.scale(bigger_surface,(little_width,y))
 
                         if y>little_surface[1].h:
-                            v_bar.refresh((screen_rect.w-little_surface[1].w)//4,little_surface[1].h,y,little_surface[1].h,False)
+                            try:
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//4,little_surface[1].h,y,little_surface[1].h,False)
+                            except:
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h,False)
                             v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
                             bar = v_bar
                         else:
