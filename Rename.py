@@ -4798,7 +4798,7 @@ if __name__ == "__main__":
         def __init__(self, path:str, file:str) -> None:
             self.path = path
             self.file = file
-            self.mp3:eyed3.AudioFile = None
+            self.__mp3:eyed3.AudioFile = None
 
         @staticmethod
         def __check(func):
@@ -4806,8 +4806,8 @@ if __name__ == "__main__":
             @wraps(func)
             def checker(self,*args,**kwargs):
 
-                if not self.mp3:
-                    self.mp3 = eyed3.load(osjoin(self.path,self.file))
+                if not self.__mp3:
+                    self.__mp3 = eyed3.load(osjoin(self.path,self.file))
                 return func(self,*args,**kwargs)
             
             return checker
@@ -4815,101 +4815,101 @@ if __name__ == "__main__":
         @property
         @__check
         def title(self) -> str:
-            return self.mp3.tag.title
+            return self.__mp3.tag.title
 
         @title.setter
         @__check
         def title(self,title:str) -> None:
-            self.mp3.tag.title = title
+            self.__mp3.tag.title = title
 
         @property
         @__check
         def album(self) -> str:
-            return self.mp3.tag.album
+            return self.__mp3.tag.album
 
         @album.setter
         @__check
         def album(self,album:str) -> None:
-            self.mp3.tag.album = album
+            self.__mp3.tag.album = album
 
         @property
         @__check
         def album_artist(self) -> str:
-            return self.mp3.tag.album_artist
+            return self.__mp3.tag.album_artist
 
         @album_artist.setter
         @__check
         def album_artist(self,album_artist:str) -> None:
-            self.mp3.tag.album_artist = album_artist
+            self.__mp3.tag.album_artist = album_artist
 
         @property
         @__check
         def artist(self) -> str:
-            return self.mp3.tag.artist
+            return self.__mp3.tag.artist
 
         @artist.setter
         @__check
         def artist(self,artist:str) -> None:
-            self.mp3.tag.artist = artist
+            self.__mp3.tag.artist = artist
 
         @property
         @__check
         def artist_origin(self) -> str:
-            return self.mp3.tag.artist_origin
+            return self.__mp3.tag.artist_origin
 
         @artist_origin.setter
         @__check
         def artist_origin(self,artist_origin:str) -> None:
-            self.mp3.tag.artist_origin = artist_origin
+            self.__mp3.tag.artist_origin = artist_origin
 
         @property
         @__check
         def composer(self) -> str:
-            return self.mp3.tag.composer
+            return self.__mp3.tag.composer
 
         @composer.setter
         @__check
         def composer(self,composer:str) -> None:
-            self.mp3.tag.composer = composer
+            self.__mp3.tag.composer = composer
 
         @property
         @__check
         def genre(self) -> str:
-            return self.mp3.tag.genre
+            return self.__mp3.tag.genre
 
         @genre.setter
         @__check
         def genre(self,genre:str) -> None:
-            self.mp3.tag.genre = genre
+            self.__mp3.tag.genre = genre
 
         @property
         @__check
         def track_num(self) -> tuple[int,int|None]:
-            t = self.mp3.tag.track_num
+            t = self.__mp3.tag.track_num
             return t[0],t[1]
 
         @track_num.setter
         @__check
         def track_num(self,data:tuple[int,int|None]|int) -> None:
             #this, total = data
-            self.mp3.tag.track_num = data#(this,total)
+            self.__mp3.tag.track_num = data#(this,total)
 
         @property
         @__check
         def disc_num(self) -> tuple[int,int|None]:
-            t = self.mp3.tag.disc_num
+            t = self.__mp3.tag.disc_num
             return t[0],t[1]
 
         @disc_num.setter
         @__check
         def disc_num(self,data:tuple[int,int|None]|int) -> None:
             #this, total = data
-            self.mp3.tag.disc_num = data#(this,total)
+            self.__mp3.tag.disc_num = data#(this,total)
 
         @property
         @__check
         def recording_date(self) -> None:
-            return self.mp3.tag.recording_date
+            return self.__mp3.tag.recording_date
         
         @recording_date.setter
         @__check
@@ -4919,42 +4919,42 @@ if __name__ == "__main__":
             mode = ("-{}","-{}","T{}",":{}",":{}")
             for d,m in zip(data,mode):
                 date+=m.format(d)
-            self.mp3.tag.recording_date = date
+            self.__mp3.tag.recording_date = date
 
         @property
         @__check
         def comments(self) -> list[tuple[str,str,bytes]]:
-            return [(i.description,i.text) for i in self.mp3.tag.comments]
+            return [(i.description,i.text) for i in self.__mp3.tag.comments]
         
         @comments.deleter
         @__check
         def comments(self, description:str|None=None) -> None:
             if description:
-                self.mp3.tag.comments.remove(description)
+                self.__mp3.tag.comments.remove(description)
                 return
             for i in self.commenti:
-                self.mp3.tag.comments.remove(i.description)
+                self.__mp3.tag.comments.remove(i.description)
 
         @comments.setter
         @__check
         def comments(self, data:tuple[str,str]) -> None:
             "data is a tuple of description and text"
             description,text = data
-            self.mp3.tag.comments.set(text,description)
+            self.__mp3.tag.comments.set(text,description)
 
         @property
         @__check
         def images(self) -> list[tuple[str,str,bytes]]:
-            return [(i.description,i.text) for i in self.mp3.tag.images]
+            return [(i.description,i.img_data) if i.image_data else (i.description,i.img_url) for i in self.__mp3.tag.images]
         
         @images.deleter
         @__check
         def images(self, description:str|None=None) -> None:
             if description:
-                self.mp3.tag.images.remove(description)
+                self.__mp3.tag.images.remove(description)
                 return
             for i in self.images:
-                self.mp3.tag.images.remove(i.description)
+                self.__mp3.tag.images.remove(i.description)
 
         @images.setter
         @__check
@@ -4964,24 +4964,23 @@ if __name__ == "__main__":
             mime_type has to be the type of the file image
             """
             description, img_data, mime_type = data
-            self.mp3.tag.images.set(3,img_data,bytes(f"image/{mime_type}"), description, None)
+            self.__mp3.tag.images.set(3,img_data,bytes(f"image/{mime_type}"), description, None)
         
         @property
         @__check
         def time_secs(self) -> str:
-            t = self.mp3.info.time_secs
+            t = self.__mp3.info.time_secs
             return f"{t//60}:{t%60}"
         
         @property
         @__check
         def size_bytes(self) -> str:
-            return f"{self.mp3.info.size_bytes/1024:.2f} Kb"
-
+            return f"{self.__mp3.info.size_bytes/1024:.2f} Kb"
 
         def close(self, how=None) -> None:
-            if self.mp3:
-                self.mp3.tag.save()
-                self.mp3=None
+            if self.__mp3:
+                self.__mp3.tag.save()
+                self.__mp3=None
 
             if how:
                 t = self.newname(how)
@@ -4994,7 +4993,7 @@ if __name__ == "__main__":
         def newname(self,how):
             #how = "{artist} - {album} - {title}"
             print("how do I do it?")
-            return f"{how.format(**{t:getattr(self.mp3.tag,t) for t in findall(r'{(.*?)}',how)})}.mp3"
+            return f"{how.format(**{t:getattr(self.__mp3.tag,t) for t in findall(r'{(.*?)}',how)})}.mp3"
     
     class ErrorScreen:
         # This class is used to show any kind of error
@@ -5209,7 +5208,7 @@ if __name__ == "__main__":
 
             self.utilities.booleans.end()
 
-    class Settings:
+    class Options:
         def __init__(self, utilities:Utilities=utilities) -> None:
             self.utilities = utilities
 
@@ -5429,38 +5428,87 @@ if __name__ == "__main__":
     class EditSong:
         def __init__(self, utilities:Utilities=utilities) -> None:
             self.utilities = utilities
+            self.list_mp3:list[Song] = []
+            self.options = Options(self.utilities)
 
         def __call__(self, wait:bool = False):
             self.utilities.booleans.add()
-            self.wait = wait
 
-            t = pygame.font.SysFont("corbel",2)
-            test = TextBox(22, pygame.font.SysFont("corbel",3), initial_text="ciao", empty_text="riempimi", max_char=500, bar_color="black")
-            r = test.init_rect(x=0,y=0)
-            drop = Drop(test,"test.txt",t,r.w,2)
-            btn = NormalButton(0,pygame.Surface((10,10)),func=drop.exit)
-            little_menu = LittleMenu(t)
+            h_char = '日QpL`幽雅に咲墨桜石の国'
+            extension= ".mp3"
 
-            self.utilities.booleans[1] = True
+            self.list_mp3.clear()
+            self.list_mp3.extend(Song(self.utilities.settings["directory"],o) for o in oslistdir(self.utilities.settings["directory"]) if osisfile(osjoin(self.utilities.settings["directory"],o)) and o.endswith(extension))
+
+            title = "Choose a song"
+            start = "Start"
+            options = "Options"
+            v_bar = VerticalBar(5,200,100,50)
+            v_bar.init_rect(x=0,y=0)
+            bar = None
+            long_s = pygame.Surface((0,0),pygame.SRCALPHA)
+            short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
+            title_s = [None,None]
+            start_b = NormalButton(0,long_s,func=print,args=("cosa faccio?",))
+            options_b = NormalButton(0,long_s,func=self.options)
+            g = pygame.sprite.Group(options_b,start_b)
+
+            self.utilities.booleans[1]=True
             while self.utilities.booleans[1]:
                 self.utilities.booleans[1] = False
 
                 screen_rect = self.utilities.screen.get_rect()
 
-                button_heigh = min(screen_rect.w//25,screen_rect.h//10)
-                little_font = pygame.font.Font(self.utilities.magic,button_heigh)
-                font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
-            
-                test.refresh(screen_rect.w/5*4, font)
-                r = test.init_rect(centerx=screen_rect.centerx,y=screen_rect.h/4)
-                drop.refresh(little_font,r.w)
-                drop.init_rect(topleft = r.bottomleft)
-                little_menu.refresh(little_font)
+                title_heigh = min(screen_rect.w//20,screen_rect.h//10)*2
+                text_heigh = title_heigh//3
+                bigger_font = pygame.font.SysFont(self.utilities.corbel,title_heigh,True)
+                font = pygame.font.Font(self.utilities.magic,text_heigh)
+                text_heigh=max(text_heigh,font.size(h_char)[1],font.size(self.list_mp3[0].file)[1])
 
-                btn.refresh(screen_rect.w/4,font.render("Ecco",True,self.utilities.colors["black"]),r.w)
-                btn.init_rect(centerx = screen_rect.w/2, bottom=screen_rect.bottom)
-                btn.text_rect("center")
-            
+                title_s[0] = bigger_font.render(title,True, self.utilities.colors["black"])
+                title_s[1] = title_s[0].get_rect(centerx = screen_rect.centerx,centery = title_heigh)
+
+                short_h = screen_rect.h-(text_heigh+title_heigh)*2
+                h = text_heigh*len(self.list_mp3)
+                long_s.fill(self.utilities.colors.transparent)
+                if h>short_h:
+                    short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w-v_bar.button_length,short_h))
+                    short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
+                    long_s = pygame.transform.scale(long_s,(1,3))
+                    long_s.set_at((0,0),pygame.color.Color("red"))
+                    long_s.set_at((0,1),pygame.color.Color("blue"))
+                    long_s.set_at((0,2),pygame.color.Color("green"))
+                    long_s = pygame.transform.smoothscale(long_s,(short_s[1].w,h))
+
+                    v_bar.refresh(v_bar.button_length,short_s[1].h,h,short_s[1].h)
+                    v_bar.init_rect(right=screen_rect.w,y=short_s[1].y)
+                    bar = v_bar
+                else:
+                    short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w,short_h))
+                    short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
+                    long_s = pygame.transform.scale(long_s,(screen_rect.w,h))
+
+                    bar = None
+                    
+                h = 0
+                black = self.utilities.colors["black"]
+                for song in self.list_mp3:
+                    long_s.blit(font.render(song.file,True,black),(0,h))
+                    h+=text_heigh
+
+                long_s = pygame.transform.smoothscale(long_s,(short_s[1].w,h))
+
+                w = max(font.size(options)[0],font.size(start)[0])
+                options_b.refresh(w,font.render(options,True,black))
+                r = options_b.init_rect(centerx=screen_rect.w//3,centery=screen_rect.h-text_heigh)
+                options_b.text_rect()
+                start_b.refresh(w,font.render(start,True,black))
+                start_b.init_rect(centerx=r.x*2,centery=r.centery)
+                start_b.text_rect()
+
+                # del r,font,bigger_font
+                del r,bigger_font
+
                 self.utilities.booleans[0] = True
                 while self.utilities.booleans[0]:
                     self.utilities.screen.tick()
@@ -5475,43 +5523,125 @@ if __name__ == "__main__":
 
                     for event in event_list:
                         self.utilities.booleans.update_resizing(event)
+
+                        if event.type==pygame.MOUSEBUTTONDOWN and event.button==1 and short_s[1].collidepoint(pos):
+                            if bar:
+                                w = (pos[1]-short_s[1].y-float(bar))//text_heigh
+                            else:
+                                w = (pos[1]-short_s[1].y)//text_heigh
+                            print("noo",self.list_mp3[int(w)].file)
+
+                        elif event.type==pygame.MOUSEBUTTONUP and event.button==1 and short_s[1].collidepoint(pos):
+                            if bar and w==(pos[1]-short_s[1].y-float(bar))//text_heigh:
+                                print("eccoci",self.list_mp3[int(w)].file)
+                            elif w==(pos[1]-short_s[1].y)//text_heigh:
+                                print("eccoci",self.list_mp3[int(w)].file)
+
                     self.utilities.booleans.update_booleans()
 
                     if not self.utilities.booleans[0] or self.utilities.booleans[1]:
                         break
                     
-                    if test:
-                        test.opened_little_menu()
-                        little_menu.init(*pos, screen_rect, copy=test.little_copy, cut=test.little_cut, paste=test.little_paste)
-                        little_menu.update(event_list,pos)
-
-                    elif little_menu:
-                        little_menu.update(event_list,pos)
-
-                    elif drop:
-                        drop.update(event_list,pos)
+                    g.update(event_list,pos)
+                    short_s[0].fill(self.utilities.colors.transparent)
+                    if bar:
+                        bar.update(event_list,pos)
+                        short_s[0].blit(long_s,(0,float(bar)))
                     else:
-                        drop.update(event_list,pos)
-                        btn.update(event_list,pos)
-                    
-                    
-                    if little_menu:
-                        self.utilities.screen.draw(little_menu)
-                        pygame.display.update(little_menu.get_rect())
+                        short_s[0].blit(long_s,(0,0))
 
-                    else:
-                        self.utilities.screen.fill(self.utilities.colors['background'])
+                    self.utilities.screen.fill(self.utilities.colors["background"])
+                    self.utilities.screen.blit(title_s,short_s)
+                    self.utilities.screen.draw(g)
+                    if bar:
+                        self.utilities.screen.draw(bar)
 
-                        if drop:
-                            self.utilities.screen.draw(drop)
-                        else:
-                            self.utilities.screen.draw(test)
-                        
-                        self.utilities.screen.draw(btn)
-                        
-                        pygame.display.update()
-            
+                    pygame.display.update()
+                    
             self.utilities.booleans.end()
+
+        # def __call__(self, wait:bool = False):
+        #     self.utilities.booleans.add()
+        #     self.wait = wait
+
+        #     t = pygame.font.SysFont("corbel",2)
+        #     test = TextBox(22, t, initial_text="ciao", empty_text="riempimi", max_char=500, bar_color="black")
+        #     r = test.init_rect(x=0,y=0)
+        #     drop = Drop(test,"test.txt",t,r.w,2)
+        #     btn = NormalButton(0,pygame.Surface((10,10)),func=drop.exit)
+        #     little_menu = LittleMenu(t)
+
+        #     self.utilities.booleans[1] = True
+        #     while self.utilities.booleans[1]:
+        #         self.utilities.booleans[1] = False
+
+        #         screen_rect = self.utilities.screen.get_rect()
+
+        #         button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+        #         little_font = pygame.font.Font(self.utilities.magic,button_heigh)
+        #         font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
+            
+        #         test.refresh(screen_rect.w/5*4, font)
+        #         r = test.init_rect(centerx=screen_rect.centerx,y=screen_rect.h/4)
+        #         drop.refresh(little_font,r.w)
+        #         drop.init_rect(topleft = r.bottomleft)
+        #         little_menu.refresh(little_font)
+
+        #         btn.refresh(screen_rect.w/4,font.render("Ecco",True,self.utilities.colors["black"]),r.w)
+        #         btn.init_rect(centerx = screen_rect.w/2, bottom=screen_rect.bottom)
+        #         btn.text_rect("center")
+            
+        #         self.utilities.booleans[0] = True
+        #         while self.utilities.booleans[0]:
+        #             self.utilities.screen.tick()
+
+        #             # events for the action
+        #             pos = pygame.mouse.get_pos()
+        #             event_list = pygame.event.get()
+        #             self.utilities.booleans.update_start(event_list,True)
+
+        #             if not self.utilities.booleans[0]:
+        #                 break
+
+        #             for event in event_list:
+        #                 self.utilities.booleans.update_resizing(event)
+        #             self.utilities.booleans.update_booleans()
+
+        #             if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+        #                 break
+                    
+        #             if test:
+        #                 test.opened_little_menu()
+        #                 little_menu.init(*pos, screen_rect, copy=test.little_copy, cut=test.little_cut, paste=test.little_paste)
+        #                 little_menu.update(event_list,pos)
+
+        #             elif little_menu:
+        #                 little_menu.update(event_list,pos)
+
+        #             elif drop:
+        #                 drop.update(event_list,pos)
+        #             else:
+        #                 drop.update(event_list,pos)
+        #                 btn.update(event_list,pos)
+                    
+                    
+        #             if little_menu:
+        #                 self.utilities.screen.draw(little_menu)
+        #                 pygame.display.update(little_menu.get_rect())
+
+        #             else:
+        #                 self.utilities.screen.fill(self.utilities.colors['background'])
+
+        #                 if drop:
+        #                     self.utilities.screen.draw(drop)
+        #                 else:
+        #                     self.utilities.screen.draw(test)
+                        
+        #                 self.utilities.screen.draw(btn)
+                        
+        #                 pygame.display.update()
+            
+        #     self.utilities.booleans.end()
     
     class Start:
         """
@@ -5526,8 +5656,7 @@ if __name__ == "__main__":
             self.path = osabspath(utilities.settings["directory"])
             self.directory_box:TextBox
             self.search = True
-            self.song = Settings(utilities)
-            # self.song = EditSong(utilities)
+            self.song = EditSong(utilities)
             
             self.arr_back = pygame.image.load("./Images/arr_back.png").convert_alpha()
             self.circle = pygame.image.load("./Images/circle.png").convert_alpha()
@@ -5579,7 +5708,11 @@ if __name__ == "__main__":
             self.renameSong(how)
             self.search=True
 
-        def run(self):
+        def run(self, func,*args):
+            self.utilities.settings["directory"]=self.path
+            func(*args)
+
+        def __call__ (self):
             """
             This function is called to get the select folder menu working
             """
@@ -5600,8 +5733,8 @@ if __name__ == "__main__":
             t = pygame.Surface((1,1))
             close_b = NormalButton(2, t, func=self.utilities.screen.quit)
             opt_b = NormalButton(2, t, func=self.utilities.color_reverse)
-            new_b = NormalButton(2, t, func=self.song, args=(True,))
-            old_b = NormalButton(2, t, func=self.song)
+            new_b = NormalButton(2, t, func=self.run, args=(self.song,True))
+            old_b = NormalButton(2, t, func=self.run, args=(self.song,))
             goback = ImageButton(t,func=self.walk_out)
             replace = ImageButton(t,func=self.replace_folder)
             self.directory_box = TextBox(22, pygame.font.SysFont("corbel",3), initial_text=self.path, empty_text=empty_textBox, max_char=500, bar_color="black",func=self.replace_folder)
@@ -5622,6 +5755,7 @@ if __name__ == "__main__":
 
             bar = None
             folders_b = []
+            n_files = None
 
             #starting the initial while loop to update text & graphics
             while self.utilities.booleans[1] or self.search:
@@ -5637,7 +5771,6 @@ if __name__ == "__main__":
                     little_font = pygame.font.Font(self.utilities.magic,button_heigh)
                     fontone = pygame.font.Font(self.utilities.magic,button_heigh*3)
                     font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
-                    
                     
                     if screen_rect.w <= little_font.size(counter.format(with_files,1))[0]+little_width+font.size(sub_t)[0]:
                         button_heigh = int(button_heigh*0.7)
@@ -5720,7 +5853,6 @@ if __name__ == "__main__":
 
                     #resizing of trasparent items
                     if folders_b:
-                        current_s[0] = smallfont.render(counter.format(with_files.format(n_files),len(folders)), True, self.utilities.colors["black"])
                         vw = little_surface[1].w-NormalButton.button_space
                         y = 1
                         for i in range(len(folders_b)):
@@ -5742,8 +5874,10 @@ if __name__ == "__main__":
                         
                         del vw,y
                     
+                    if n_files:
+                        current_s[0] = little_font.render(counter.format(with_files.format(n_files),len(folders_b)), True, self.utilities.colors["black"])
                     else:
-                        current_s[0] = smallfont.render(counter.format(without_files,len(folders_b)), True, self.utilities.colors["red"])
+                        current_s[0] = little_font.render(counter.format(without_files,len(folders_b)), True, self.utilities.colors["red"])
 
                     current_s[1] = current_s[0].get_rect(right=little_surface[1].right,bottom=subt_s[1].bottom)
 
@@ -5868,7 +6002,7 @@ if __name__ == "__main__":
             self.utilities.booleans.end()
 
     utilities.init()
-    Start(utilities).run()
+    Start(utilities)()
 
     # s = Song(".","Test.mp3")
     # print(s.album)
