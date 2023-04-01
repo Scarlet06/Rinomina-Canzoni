@@ -814,6 +814,13 @@ class Utilities:
         self.booleans[0]=False
 
     @staticmethod
+    def filename(name:str) -> str:
+        for c in '/\\"?*:<>|':
+            if c in name:
+                name = name.replace(c,"")
+        return name
+
+    @staticmethod
     def superfunc(func:callable, args:tuple) -> callable:
         """
         This function returns a new function with the arguments in itself.
@@ -4990,10 +4997,9 @@ if __name__ == "__main__":
                     raise NameError(f"{t} already exists")
                 osrename(osjoin(self.path,self.file),osjoin(self.path,t))
 
-        def newname(self,how):
-            #how = "{artist} - {album} - {title}"
-            print("how do I do it?")
-            return f"{how.format(**{t:getattr(self.__mp3.tag,t) for t in findall(r'{(.*?)}',how)})}.mp3"
+        def newname(self,utilities:Utilities=utilities):
+            
+            return  utilities.filename(f"{utilities.settings['rename'].format(**{t:getattr(self.__mp3.tag,t) for t in findall(r'{(.*?)}',utilities.settings['rename'])})}.mp3") 
     
     class ErrorScreen:
         # This class is used to show any kind of error
@@ -5220,6 +5226,7 @@ if __name__ == "__main__":
             class MissingFormatter(Formatter):
                 def get_value(self, key, args, kwds):
                     if key in kwds:
+                        # if isinstance(kwds[key],tuple)
                         return kwds[key]
                     return key
                 
@@ -5267,7 +5274,7 @@ if __name__ == "__main__":
                 "artist_origin": "Eurythmics",
                 "composer":"Annie Lennox, Dave Stewart",
                 "genre":"Remix",
-                "track_num": (None,None),
+                "track_num": (1,None),
                 "disc_num":(None,None)
             }
             arg=(
@@ -5298,7 +5305,8 @@ if __name__ == "__main__":
             explain_t = RectengleText(100,"gray",0,font,explain_t,"black")
 
             example = self.utilities.settings["rename"]
-            t = TextBox(4,font,example,"Lascia vuoto per non rinominare",writable=True)
+            
+            t = TextBox(4,font,example,"Lascia vuoto per non rinominare",writable=True,rule = self.utilities.filename)
             t.init_rect(x=0,y=0)
             example_s = [None,None]
 
@@ -5451,7 +5459,7 @@ if __name__ == "__main__":
             max_lenght = 20_000
             short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
             title_s = [None,None]
-            start_b = NormalButton(0,short_s[0],func=print,args=("cosa faccio?",))
+            start_b = NormalButton(0,short_s[0],func=self.run,args=(wait,))
             options_b = NormalButton(0,short_s[0],func=self.options)
             g = pygame.sprite.Group(options_b,start_b)
 
@@ -5531,16 +5539,15 @@ if __name__ == "__main__":
 
                         if event.type==pygame.MOUSEBUTTONDOWN and event.button==1 and short_s[1].collidepoint(pos):
                             if bar:
-                                w = (pos[1]-short_s[1].y-float(bar))//text_heigh
+                                w = int((pos[1]-short_s[1].y-float(bar))//text_heigh)
                             else:
-                                w = (pos[1]-short_s[1].y)//text_heigh
-                            print("noo",self.list_mp3[int(w)].file)
+                                w = int((pos[1]-short_s[1].y)//text_heigh)
 
                         elif event.type==pygame.MOUSEBUTTONUP and event.button==1 and short_s[1].collidepoint(pos):
                             if bar and w==(pos[1]-short_s[1].y-float(bar))//text_heigh:
-                                print("eccoci",self.list_mp3[int(w)].file)
+                                self.run(wait,w)
                             elif w==(pos[1]-short_s[1].y)//text_heigh:
-                                print("eccoci",self.list_mp3[int(w)].file)
+                                self.run(wait,w)
 
                     self.utilities.booleans.update_booleans()
 
@@ -5569,6 +5576,8 @@ if __name__ == "__main__":
                     
             self.utilities.booleans.end()
 
+        def run(self, wait:bool, starting:int=0):
+            print(f"{starting:<10}{self.list_mp3[starting].file}")
         # def __call__(self, wait:bool = False):
         #     self.utilities.booleans.add()
         #     self.wait = wait
