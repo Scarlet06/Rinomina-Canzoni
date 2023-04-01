@@ -5443,14 +5443,16 @@ if __name__ == "__main__":
             title = "Choose a song"
             start = "Start"
             options = "Options"
+
             v_bar = VerticalBar(5,200,100,50)
             v_bar.init_rect(x=0,y=0)
             bar = None
-            long_s = pygame.Surface((0,0),pygame.SRCALPHA)
+
+            max_lenght = 20_000
             short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
             title_s = [None,None]
-            start_b = NormalButton(0,long_s,func=print,args=("cosa faccio?",))
-            options_b = NormalButton(0,long_s,func=self.options)
+            start_b = NormalButton(0,short_s[0],func=print,args=("cosa faccio?",))
+            options_b = NormalButton(0,short_s[0],func=self.options)
             g = pygame.sprite.Group(options_b,start_b)
 
             self.utilities.booleans[1]=True
@@ -5469,34 +5471,37 @@ if __name__ == "__main__":
                 title_s[1] = title_s[0].get_rect(centerx = screen_rect.centerx,centery = title_heigh)
 
                 short_h = screen_rect.h-(text_heigh+title_heigh)*2
-                h = text_heigh*len(self.list_mp3)
-                long_s.fill(self.utilities.colors.transparent)
-                if h>short_h:
+                full_lenght = text_heigh*len(self.list_mp3)
+                if full_lenght>short_h:
                     short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w-v_bar.button_length,short_h))
                     short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
-                    long_s = pygame.transform.scale(long_s,(1,3))
-                    long_s.set_at((0,0),pygame.color.Color("red"))
-                    long_s.set_at((0,1),pygame.color.Color("blue"))
-                    long_s.set_at((0,2),pygame.color.Color("green"))
-                    long_s = pygame.transform.smoothscale(long_s,(short_s[1].w,h))
+                    long_s = tuple(pygame.Surface((short_s[1].w,max_lenght if max_lenght*k<full_lenght else full_lenght%max_lenght),pygame.SRCALPHA) for k in range(int(full_lenght//max_lenght)+1))
 
-                    v_bar.refresh(v_bar.button_length,short_s[1].h,h,short_s[1].h)
+                    v_bar.refresh(v_bar.button_length,short_s[1].h,full_lenght,short_s[1].h)
                     v_bar.init_rect(right=screen_rect.w,y=short_s[1].y)
                     bar = v_bar
                 else:
                     short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w,short_h))
                     short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
-                    long_s = pygame.transform.scale(long_s,(screen_rect.w,h))
+                    long_s = (pygame.Surface((short_s[1].w,full_lenght),pygame.SRCALPHA),)
 
                     bar = None
                     
-                h = 0
+                y = 0
+                j=0
                 black = self.utilities.colors["black"]
                 for song in self.list_mp3:
-                    long_s.blit(font.render(song.file,True,black),(0,h))
-                    h+=text_heigh
+                    t = y%max_lenght
+                    long_s[j].blit(font.render(song.file,True,black),(0,t))
 
-                long_s = pygame.transform.smoothscale(long_s,(short_s[1].w,h))
+                    if t+text_heigh>=max_lenght:
+                        j+=1
+                        try:
+                            long_s[j].blit(font.render(song.file,True,black),(0,t-max_lenght))
+                        except:
+                            print("whaaaat?")
+
+                    y+=text_heigh
 
                 w = max(font.size(options)[0],font.size(start)[0])
                 options_b.refresh(w,font.render(options,True,black))
@@ -5546,9 +5551,13 @@ if __name__ == "__main__":
                     short_s[0].fill(self.utilities.colors.transparent)
                     if bar:
                         bar.update(event_list,pos)
-                        short_s[0].blit(long_s,(0,float(bar)))
+                        j=int(-float(bar)//max_lenght)
+                        y=float(bar)+max_lenght*j
+                        short_s[0].blit(long_s[j],(0,y))
+                        if y+max_lenght>0 and j+1<len(long_s):
+                            short_s[0].blit(long_s[j+1],(0,y+max_lenght))
                     else:
-                        short_s[0].blit(long_s,(0,0))
+                        short_s[0].blit(long_s[0],(0,0))
 
                     self.utilities.screen.fill(self.utilities.colors["background"])
                     self.utilities.screen.blit(title_s,short_s)
