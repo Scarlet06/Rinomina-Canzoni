@@ -139,7 +139,7 @@ class INI(dict):
     
     __slots__ = ("_decoder")    # [str]                 -> decoding/encoding
                                 #                           text special char
-    _name = "Settings.ini"      # [str]                 -> this is the name of
+    _name = "Options.ini"      # [str]                 -> this is the name of
                                 #                           the file
     _key = (                    # [tuple[str]]          -> tuple of key for
         "pos",                  #                           the dict
@@ -148,6 +148,7 @@ class INI(dict):
         "night_mode",
         "drop",
         "rename",
+        "del_pics",
         "directory"
         ) 
     _val = (                    # [tuple[str|float]]    -> tuple of value for
@@ -155,8 +156,9 @@ class INI(dict):
         "858,480",              #                           corresponding key
         0,                      #                           in the same index
         0,
-        0b011000100,
+        '0110001',
         '{title} - {artist} - {album}',
+        0,
         '.'
         )
     _dim = '{},{}'              # [str]                 -> place to put pos and
@@ -172,9 +174,10 @@ class INI(dict):
         ';la risoluzione dello schermo rappresenta le dimensioni w,h della finestra\n'\
         ';il full screen con bordi è attivo se fissato a 1\n;la modalità notte è attiva se fissato a 1\n\n'\
         '[Folder]\ndirectory = {directory}\n;directory è la cartella in cui il programma cerca le informazioni\n\n'\
-        '[Settings]\nrename = {rename}\ndrop = {drop}\n'\
+        '[Options]\nrename = {rename}\ndrop = {drop}\ndel_pics = {del_pics}\n'\
         ';rename è la stringa utilizzata per rinominare i file sostituendo le parole contenute tra le parentesi graffe con l\'informazione presente nell\'audio\n'\
-        ';drop è un numero che rappresenta (in forma binaria) quali informazioni verranno salvate in un documento apposito'\
+        ';drop è un numero che rappresenta (in forma binaria) quali informazioni verranno salvate in un documento apposito\n'\
+        ';del_pics è un\'impostazione che permette l\'eliminazione automatica di tutte le immagini salvate nel file mp3'
 
     def __init__(self, decoder:str) -> None:
         """
@@ -4801,12 +4804,31 @@ class HorizontalBar(pygame.sprite.Sprite):
 
 if __name__ == "__main__":
     class Song:
+        droppable = {
+            "title":"Titolo",
+            "album":"Album",
+            "artist":"Artista",
+            "album_artist":"Artista album",
+            "artist_origin": "Artista originale",
+            "composer":"Compositore",
+            "genre":"Genere"
+        }
+        non_droppable = {
+            "track_num": "Numero traccia",
+            "disc_num": "Numero disco",
+            "recording_date":"Data",
+            "comments":"Commenti",
+            "images":"Immagini"
+        }
+        info = {
+            'time_secs':'Minuti:',
+            'size_bytes':'Dimensioni:'
+        }
 
         def __init__(self, path:str, file:str) -> None:
             self.path = path
             self.file = file
             self.__mp3:eyed3.AudioFile = None
-
         @staticmethod
         def __check(func):
 
@@ -4952,7 +4974,7 @@ if __name__ == "__main__":
         @property
         @__check
         def images(self) -> list[tuple[str,str,bytes]]:
-            return [(i.description,i.img_data) if i.image_data else (i.description,i.img_url) for i in self.__mp3.tag.images]
+            return [(i.description,i.img_data,None) if i.image_data else (i.description,None,i.img_url) for i in self.__mp3.tag.images]
         
         @images.deleter
         @__check
@@ -4984,20 +5006,66 @@ if __name__ == "__main__":
         def size_bytes(self) -> str:
             return f"{self.__mp3.info.size_bytes/1024:.2f} Kb"
 
-        def close(self, how=None) -> None:
+        def close(self, utilities:Utilities=utilities) -> None:
             if self.__mp3:
                 self.__mp3.tag.save()
                 self.__mp3=None
 
-            if how:
-                t = self.newname(how)
+            if utilities.settings['rename']:
+                t = self.newname(utilities)
                 if t==self.file:
                     return
                 if osexists(osjoin(self.path,t)):
                     raise NameError(f"{t} already exists")
                 osrename(osjoin(self.path,self.file),osjoin(self.path,t))
 
-        def newname(self,utilities:Utilities=utilities):
+        @__check
+        def get_dict(self):
+            return {t:getattr(self.__mp3,t) for t in self.droppable}
+        
+        @__check
+        def get_full_dict(self):
+            return {t:getattr(self.__mp3,t) for t in self.droppable | self.non_droppable |self.info}
+
+        @staticmethod
+        def example() -> dict[str,str]:
+            return {
+                "title":"Sweet Dreams",
+                "album":"Single",
+                "artist":"We Are Magonia",
+                "album_artist":None,
+                "artist_origin": "Eurythmics",
+                "composer":"Annie Lennox, Dave Stewart",
+                "genre":"Remix",
+                "track_num": (1,None),
+                "disc_num":(None,None),
+                "recording_date":"2020-03-10T00:00:00",
+                "comments":[('source','https://www.youtube.com/watch?v=yOwA1yAbHSo')],
+                "images":[],
+                'time_secs':'3:48',
+                'size_bytes':'8980.48 Kb'
+            }
+        
+        @staticmethod
+        def name() -> dict[str,str]:
+            return {
+                "title":"Titolo",
+                "album":"Album",
+                "artist":"Artista",
+                "album_artist":"Artista album",
+                "artist_origin": "Artista originale",
+                "composer":"Compositore",
+                "genre":"Genere",
+                "track_num": "Numero traccia",
+                "disc_num": "Numero disco",
+                "recording_date":"Data",
+                "comments":"Commenti",
+                "images":"Immagini",
+                'time_secs':'Minuti:',
+                'size_bytes':'Dimensioni:'
+            }
+
+        def newfile(self,utilities:Utilities=utilities):
             
             return  utilities.filename(f"{utilities.settings['rename'].format(**{t:getattr(self.__mp3.tag,t) for t in findall(r'{(.*?)}',utilities.settings['rename'])})}.mp3") 
     
@@ -5218,7 +5286,7 @@ if __name__ == "__main__":
         def __init__(self, utilities:Utilities=utilities) -> None:
             self.utilities = utilities
 
-        def __call__(self, *args, **kwargs) -> None:
+        def __call__(self) -> None:
             self.utilities.booleans.add()
 
             from string import Formatter
@@ -5266,30 +5334,9 @@ if __name__ == "__main__":
             settings_s = [None,None]
             explain_b = "Seleziona quali di questi dati si vuole tenere la drop table"
             explain_b = RectengleText(100,"gray",0,font,explain_b,"black")
-            arg_b = {
-                "title":"Sweet Dreams",
-                "album":"Single",
-                "artist":"We Are Magonia",
-                "album_artist":None,
-                "artist_origin": "Eurythmics",
-                "composer":"Annie Lennox, Dave Stewart",
-                "genre":"Remix",
-                "track_num": (1,None),
-                "disc_num":(None,None)
-            }
-            arg=(
-                "Titolo",
-                "Album",
-                "Artista",
-                "Artista album",
-                "Artista originale",
-                "Compositore",
-                "Genere",
-                "Numero Traccia",
-                "Numero Disco"
-            )
-            b = [i=="1" for i in f'{self.utilities.settings["drop"]:b}']
-            print(self.utilities.settings["drop"])
+            
+            b = [i=="1" for i in self.utilities.settings["drop"]]
+            
             def change(b,i):
                 b[i]=not b[i]
 
@@ -5299,10 +5346,16 @@ if __name__ == "__main__":
             )
             
             explain_t = "Scrivi come vuoi rinominare ciascun file .mp3. Inserisci tra parentesi graffe {} i metadati del file audio scelti tra: "
-            for ar in arg_b:
-                explain_t+=f"-{ar} "
-                
+            for ar in Song.name():
+                explain_t+=f"'{ar}'; "
             explain_t = RectengleText(100,"gray",0,font,explain_t,"black")
+
+            def invert():
+                self.utilities.settings["del_pics"] = int(not self.utilities.settings["del_pics"])
+
+            check_d = CheckButton(4,self.utilities.settings["del_pics"],func=invert)
+            explain_d = "Seleziona quest'opzione per eliminare le immagini in automatico"
+            explain_d = RectengleText(100,"gray",0,font,explain_d,"black")
 
             example = self.utilities.settings["rename"]
             
@@ -5316,7 +5369,7 @@ if __name__ == "__main__":
 
             little_menu = LittleMenu(font)
             g = pygame.sprite.Group(c[0] for c in check_b)
-            g.add(t,q_b, explain_t,explain_b)
+            g.add(t,q_b, explain_t,explain_b,explain_d,check_d)
             del s, ar
 
             self.utilities.booleans[1] = True
@@ -5343,31 +5396,36 @@ if __name__ == "__main__":
 
                 explain_t.refresh(width,font)
                 r = explain_t.init_rect(centerx=centerx, y = settings_s[1].bottom+button_heigh)
-                h = little_font.size(arg[0])[1]
-                if max(little_font.size(a)[0]+h*2 for a in arg)>centerx:
+                h = little_font.size("Pq")[1]
+                if max(little_font.size(a)[0]+h*2 for a in Song.name().values())>centerx:
                     little_font = pygame.font.SysFont(self.utilities.corbel,button_heigh//6)
-                    h = little_font.size(arg[0])[1]
+                    h = little_font.size("Pq")[1]
                 t.refresh(width,font)
                 r = t.init_rect(centerx=centerx,centery=r.bottom+button_heigh)
 
-                example_s[0] = little_font.render(missing.format(example,**arg_b),True,self.utilities.colors["black"])
+                example_s[0] = little_font.render(missing.format(example,**Song.example()),True,self.utilities.colors["black"])
                 example_s[1] = example_s[0].get_rect(centerx=centerx, centery=r.bottom+button_heigh)
 
                 explain_b.refresh(width,font)
-                r = explain_b.init_rect(centerx=centerx, centery = example_s[1].bottom+button_heigh*2)
+                r = explain_b.init_rect(centerx=centerx, centery = example_s[1].bottom+button_heigh)
                 
                 bottom = r.bottom
-                for i,check in enumerate(check_b):
+                for i,drop in enumerate(Song.droppable.keys()):
                     if i%2:
                         x+= centerx
                     else:
                         x=centerx/2-button_heigh
                         y=bottom + h
-                    check[0].refresh(h)
-                    r = check[0].init_rect(x=x,centery=y)
-                    check[1] = little_font.render(arg[i],True,self.utilities.colors["black"])
+                    check_b[i][0].refresh(h)
+                    r = check_b[i][0].init_rect(x=x,centery=y)
+                    check_b[i][1] = little_font.render(drop,True,self.utilities.colors["black"])
                     bottom = r.bottom
-                    check[2] = check[1].get_rect(x = r.right+h/2, bottom=bottom)
+                    check_b[i][2] = check_b[i][1].get_rect(x = r.right+h/2, bottom=bottom)
+                
+                check_d.refresh(h)
+                r = check_d.init_rect(x=centerx/6,y=bottom + h)
+                explain_d.refresh(width-h/2*3,font)
+                bottom = explain_d.init_rect(x=r.right+h/2,top=r.top).bottom
 
                 q_b.refresh(0,font.render(q,True,self.utilities.colors["black"]))
                 q_b.init_rect(centerx=centerx,y=bottom+button_heigh)
@@ -5409,7 +5467,7 @@ if __name__ == "__main__":
                     
                     if example != str(t):
                         example = str(t)
-                        example_s[0] = little_font.render(missing.format(example,**arg_b),True,self.utilities.colors["black"])
+                        example_s[0] = little_font.render(missing.format(example,**Song.example()),True,self.utilities.colors["black"])
                         example_s[1] = example_s[0].get_rect(centerx=centerx, bottom=example_s[1].bottom)
                         
                     if little_menu:
@@ -5427,10 +5485,9 @@ if __name__ == "__main__":
                         pygame.display.update()
 
             if self.utilities.settings["rename"] != example:
-                self.utilities.settings["rename"] = result.format(example,**arg_b)
-            self.utilities.settings["drop"] = int("".join(str(int(o)) for o in b), base=2)
-            print(self.utilities.settings["drop"])
-
+                self.utilities.settings["rename"] = result.format(example,**Song.example())
+            self.utilities.settings["drop"] = "".join(str(int(i)) for i in b)
+            
             self.utilities.booleans.end()
 
     class EditSong:
@@ -5504,10 +5561,7 @@ if __name__ == "__main__":
 
                     if t+text_heigh>=max_lenght:
                         j+=1
-                        try:
-                            long_s[j].blit(font.render(song.file,True,black),(0,t-max_lenght))
-                        except:
-                            print("whaaaat?")
+                        long_s[j].blit(font.render(song.file,True,black),(0,t-max_lenght))
 
                     y+=text_heigh
 
@@ -5578,6 +5632,8 @@ if __name__ == "__main__":
 
         def run(self, wait:bool, starting:int=0):
             print(f"{starting:<10}{self.list_mp3[starting].file}")
+
+
         # def __call__(self, wait:bool = False):
         #     self.utilities.booleans.add()
         #     self.wait = wait
