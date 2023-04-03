@@ -156,7 +156,7 @@ class INI(dict):
         "858,480",              #                           corresponding key
         0,                      #                           in the same index
         0,
-        '0110001',
+        '0000000',
         '{title} - {artist} - {album}',
         0,
         '.'
@@ -4804,31 +4804,54 @@ class HorizontalBar(pygame.sprite.Sprite):
 
 if __name__ == "__main__":
     class Song:
-        droppable = {
-            "title":"Titolo",
-            "album":"Album",
-            "artist":"Artista",
-            "album_artist":"Artista album",
-            "artist_origin": "Artista originale",
-            "composer":"Compositore",
-            "genre":"Genere"
-        }
-        non_droppable = {
-            "track_num": "Numero traccia",
-            "disc_num": "Numero disco",
-            "recording_date":"Data",
-            "comments":"Commenti",
-            "images":"Immagini"
-        }
-        info = {
-            'time_secs':'Minuti:',
-            'size_bytes':'Dimensioni:'
-        }
+
+        @staticmethod
+        def droppable():
+            return {
+                "title":"Titolo",
+                "album":"Album",
+                "artist":"Artista",
+                "album_artist":"Artista album",
+                "artist_origin": "Artista originale",
+                "composer":"Compositore",
+                "genre":"Genere"
+            }
+        @staticmethod
+        def non_droppable():
+            return {
+                "track_num": "Numero traccia",
+                "disc_num": "Numero disco",
+                "recording_date":"Data",
+                "comments":"Commenti"#,
+                #"images":"Immagini"
+            }
+        @staticmethod
+        def info():
+            return {
+                'time_secs':'Minuti:',
+                'size_bytes':'Dimensioni:'
+            }
+        @staticmethod
+        def order():
+            return (
+                "title",
+                "album",
+                "artist",
+                "album_artist",
+                "artist_origin",
+                "composer",
+                "track_num",
+                "disc_num",
+                "recording_date",
+                "comments"#,
+                #"images":"Immagini"
+                )
 
         def __init__(self, path:str, file:str) -> None:
             self.path = path
             self.file = file
             self.__mp3:eyed3.AudioFile = None
+        
         @staticmethod
         def __check(func):
 
@@ -4921,7 +4944,10 @@ if __name__ == "__main__":
         @__check
         def track_num(self,data:tuple[int,int|None]|int) -> None:
             #this, total = data
-            self.__mp3.tag.track_num = data#(this,total)
+            try:
+                self.__mp3.tag.track_num = data#(this,total)
+            except:
+                ...
 
         @property
         @__check
@@ -4933,22 +4959,45 @@ if __name__ == "__main__":
         @__check
         def disc_num(self,data:tuple[int,int|None]|int) -> None:
             #this, total = data
-            self.__mp3.tag.disc_num = data#(this,total)
+            try:
+                self.__mp3.tag.disc_num = data#(this,total)
+            except:
+                ...
 
         @property
         @__check
         def recording_date(self) -> None:
-            return self.__mp3.tag.recording_date
-        
+            t = self.__mp3.tag.recording_date
+            try:
+                if t is None:
+                    return (None,None,None,None,None,None)
+                
+                elif "T" in t:
+                    t1,t2 = t.split("T")
+                    t1=t1.split("-")
+                    t2 = t2.split(":")
+                    return tuple(*t1,*(t2[i] if i<len(t2) else None for i in range(3)))
+                
+                t1=t.split("-")
+                return tuple(*(t1[i] if i<len(t1) else None for i in range(3)),None,None,None)
+
+            except:
+                return (None,None,None,None,None,None)
+
         @recording_date.setter
         @__check
         def recording_date(self,data:tuple[int,...]) -> None:
-            year,*data = data
-            date = str(year)
-            mode = ("-{}","-{}","T{}",":{}",":{}")
-            for d,m in zip(data,mode):
-                date+=m.format(d)
-            self.__mp3.tag.recording_date = date
+            try:
+                year,*data = data
+                date = str(year)
+                mode = ("-{}","-{}","T{}",":{}",":{}")
+                for d,m in zip(data,mode):
+                    if data is None:
+                        break
+                    date+=m.format(d)
+                self.__mp3.tag.recording_date = date
+            except:
+                pass
 
         @property
         @__check
@@ -4975,7 +5024,7 @@ if __name__ == "__main__":
         @__check
         def images(self) -> list[tuple[str,str,bytes]]:
             return [(i.description,i.img_data,None) if i.image_data else (i.description,None,i.img_url) for i in self.__mp3.tag.images]
-        
+
         @images.deleter
         @__check
         def images(self, description:str|None=None) -> None:
@@ -4994,7 +5043,7 @@ if __name__ == "__main__":
             """
             description, img_data, mime_type = data
             self.__mp3.tag.images.set(3,img_data,bytes(f"image/{mime_type}"), description, None)
-        
+
         @property
         @__check
         def time_secs(self) -> str:
@@ -5019,13 +5068,9 @@ if __name__ == "__main__":
                     raise NameError(f"{t} already exists")
                 osrename(osjoin(self.path,self.file),osjoin(self.path,t))
 
-        @__check
-        def get_dict(self):
-            return {t:getattr(self.__mp3,t) for t in self.droppable}
-        
-        @__check
-        def get_full_dict(self):
-            return {t:getattr(self.__mp3,t) for t in self.droppable | self.non_droppable |self.info}
+        def quit(self):
+            if self.__mp3:
+                self.__mp3= None
 
         @staticmethod
         def example() -> dict[str,str]:
@@ -5410,7 +5455,7 @@ if __name__ == "__main__":
                 r = explain_b.init_rect(centerx=centerx, centery = example_s[1].bottom+button_heigh)
                 
                 bottom = r.bottom
-                for i,drop in enumerate(Song.droppable.keys()):
+                for i,drop in enumerate(Song.droppable().keys()):
                     if i%2:
                         x+= centerx
                     else:
@@ -5516,7 +5561,10 @@ if __name__ == "__main__":
             max_lenght = 20_000
             short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
             title_s = [None,None]
-            start_b = NormalButton(0,short_s[0],func=self.run,args=(wait,))
+            if wait:
+                start_b = NormalButton(0,short_s[0],func=self.run)
+            else:
+                start_b = NormalButton(0,short_s[0],func=self.fastrun)
             options_b = NormalButton(0,short_s[0],func=self.options)
             g = pygame.sprite.Group(options_b,start_b)
 
@@ -5599,9 +5647,9 @@ if __name__ == "__main__":
 
                         elif event.type==pygame.MOUSEBUTTONUP and event.button==1 and short_s[1].collidepoint(pos):
                             if bar and w==(pos[1]-short_s[1].y-float(bar))//text_heigh:
-                                self.run(wait,w)
+                                start_b.func(w)
                             elif w==(pos[1]-short_s[1].y)//text_heigh:
-                                self.run(wait,w)
+                                start_b.func(w)
 
                     self.utilities.booleans.update_booleans()
 
@@ -5629,10 +5677,191 @@ if __name__ == "__main__":
                     pygame.display.update()
                     
             self.utilities.booleans.end()
+        
+        def __prev(self):
+            self.change_song=-1
+            self.save=True
+            self.utilities.booleans.breaker()
+        def __follow(self):
+            self.change_song=1
+            self.save=True
+            self.utilities.booleans.breaker()
+        def __stop(self):
+            self.change_song=0
+            self.save=False
+            self.utilities.booleans.breaker()
+        def __refresh(self):
+            self.change_song=0
+            self.save=False
+            self.utilities.booleans.breaker()
+            self.utilities.booleans[1] = True
 
-        def run(self, wait:bool, starting:int=0):
+        def fastrun(self,starting:int=0):
             print(f"{starting:<10}{self.list_mp3[starting].file}")
 
+        def run(self, starting:int=0):
+            print(f"{starting:<10}{self.list_mp3[starting].file}")
+
+            self.utilities.booleans.add()
+
+            delete = "Rimuovi"
+            add = "Aggiungi"
+            stop = "Stop"
+            prev = "Precedente"
+            follow = "Prossima"
+            refresh = "Ricarica"
+
+            t = pygame.font.SysFont("corbel",3)
+            s = pygame.Surface((1,1))
+            g = pygame.sprite.Group()
+            g_super = pygame.sprite.Group()
+
+            prev_b = NormalButton(0,s,func=self.__prev)
+            follow_b = NormalButton(0,s,func=self.__follow)
+            stop_b = NormalButton(0,s,func=self.__stop)
+            refresh_b = NormalButton(0,s,func=self.__refresh)
+            g.add(prev_b,follow_b,stop_b,refresh_b)
+
+            droppable:dict[str,tuple[Drop|None,TextBox,list[pygame.Surface,pygame.Rect]]] = {}
+            boxes = {}
+            infos = {'file':["",None,None]}
+
+            for d,(k,v) in zip(self.utilities.settings["drop"],Song.droppable().items()):
+
+                b=TextBox(2,t,empty_text=v)
+                b.init_rect()
+                if int(d):
+                    droppable[k]=([v,None,None],Drop(b,k,t,2),b)
+                    g_super.add(droppable[k][1])
+                else:
+                    droppable[k]=([v,None,None],None,b)
+                    g.add(b)
+            
+            for k,v in Song.non_droppable().items():
+                
+                if "num" in k:
+                    b = (TextBox(2,t,empty_text="Nr",max_char=6,rule=str.isnumeric),TextBox(2,t,empty_text="Tot",max_char=6,rule=str.isnumeric))
+                    for bb in b:
+                        bb.init_rect()
+                    g.add(*b)
+                    boxes[k]=([v,None,None],b)
+                    del bb
+                    
+                elif "data" in k:
+                    b = (TextBox(2,t,empty_text="AAAA",max_char=4,rule=str.isnumeric),TextBox(2,t,empty_text="MM",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="GG",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="HH",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="MM",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="SS",max_char=2,rule=str.isnumeric))
+                    for bb in b:
+                        bb.init_rect()
+                    g.add(*b)
+                    boxes[k]=([v,None,None],b)
+                    del bb
+                
+                elif "commpents" == k:
+                    def __del(list_boxes:list[pygame.sprite.Sprite],starting = starting):
+                        del self.list_mp3[starting].images
+                        for box in list_boxes:
+                            box.kill()
+                        list_boxes.clear()
+                    
+                    def __add(list_boxes:list[pygame.sprite.Sprite],g:pygame.sprite.Group=g):
+                        list_boxes.append(TextBox(4,t,"","Descrizione",64))
+                        list_boxes.append(TextBox(4,t,"","Contenuto",1024))
+                    c=[]
+                    b = (NormalButton(0,s,func=__add, args=(c,)),NormalButton(0,s,func=__del, args=(c,)),c)
+                    g.add(*b[:2])
+                    boxes[k]=([v,None,None],b)
+
+                elif "images" == k:
+                    ...
+
+            for k,v in Song.info().items():
+                infos[k] = [v,None,None]
+
+            del t,s,b,bb,k,v,d
+
+            self.change_song = 0
+            self.save=True
+            self.utilities.booleans[1] = True
+            while self.utilities.booleans[1]:
+                self.utilities.booleans[1] = False
+
+                screen_rect = self.utilities.screen.get_rect()
+                black = self.utilities.colors["black"]
+
+                button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+                font = pygame.font.SysFont(self.utilities.corbel,button_heigh)
+                small_font = pygame.font.Font(self.utilities.magic,int(button_heigh/2))
+                x = y = button_heigh
+                for k in Song.order():
+                    if k in droppable:
+                        drop = droppable[k]
+                        drop[0][1] = font.render(drop[0][0],True,black)
+                        drop[0][2] = drop[0][1].get_rect(x=x,y=y)
+                        drop[-1].replaceText(getattr(self.list_mp3[starting],k))
+                        drop[-1].refresh(screen_rect.w-(drop[0][2].right+button_heigh*2),font)
+                        r = drop[-1].init_rect(x=drop[0][2].righ+button_heigh,bottom=drop[0][2].bottom)
+                        if drop[-2] is not None:
+                            drop[-2].refresh(small_font,r.w)
+                            drop[-2].init_rect(bottomleft=r.bottomleft)
+                        y = r.bottom+button_heigh/2
+
+                    elif "num" in k:
+                        drop = boxes[k]
+                        drop[0][1] = font.render(drop[0][0],True,black)
+                        r = drop[0][2] = drop[0][1].get_rect(x=x,y=y)
+                        num = getattr(self.list_mp3[starting],k)
+                        for i,b in zip(num,drop[-1]):
+                            if i is None:
+                                b.replaceText("")
+                            else:
+                                b.replaceText(str(i))
+                            drop[-1].refresh(screen_rect.w/4,font)
+                            r = drop[-1].init_rect(x=r.righ+button_heigh,bottom=drop[0][2].bottom)
+
+                        y = r.bottom+button_heigh/2
+                        del num
+                    
+                    elif "data" in k:
+                        drop = boxes[k]
+                        drop[0][1] = font.render(drop[0][0],True,black)
+                        r = drop[0][2] = drop[0][1].get_rect(x=x,y=y)
+                        data = getattr(self.list_mp3[starting],k)
+                        
+                        for i,b in zip(data,drop[-1]):
+                            if i is None:
+                                b.replaceText("")
+                            else:
+                                b.replaceText(str(i))
+                            drop[-1].refresh(screen_rect.w/7,font)
+                            r = drop[-1].init_rect(x=r.righ+button_heigh,bottom=drop[0][2].bottom)
+
+                        y = r.bottom+button_heigh/2
+                        del data
+
+                    elif "commpents" == k:...
+
+                    elif "images" == k:
+                        ...
+
+
+
+                self.utilities.booleans[0] = True
+                while self.utilities.booleans[0]:
+                    ...
+
+                if self.save:
+                    self.list_mp3[starting].close(self.utilities)
+                else:
+                    self.list_mp3[starting].quit()
+                
+                if self.change_song>0:
+                    self.change_song=0
+                    starting+=1
+                    self.utilities.booleans[1] = starting<len(self.list_mp3)
+                elif self.change_song<0:
+                    self.change_song=0
+                    starting-=1
+                    self.utilities.booleans[1] = starting>=0
+            self.utilities.booleans.end()
 
         # def __call__(self, wait:bool = False):
         #     self.utilities.booleans.add()
@@ -6077,9 +6306,3 @@ if __name__ == "__main__":
 
     utilities.init()
     Start(utilities)()
-
-    # s = Song(".","Test.mp3")
-    # print(s.album)
-    # print(s.comments)
-    # # s.comments = "a","b"
-    # # s.close()
