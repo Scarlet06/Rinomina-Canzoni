@@ -3766,7 +3766,6 @@ class Drop(pygame.sprite.Sprite):
         """
 
         #drawing the image surface on the given screen
-        self.box.draw(screen)
         screen.blit(self.image, self.rect)
 
     def displayer(self) -> pygame.Rect:
@@ -4828,8 +4827,9 @@ if __name__ == "__main__":
         @staticmethod
         def info():
             return {
-                'time_secs':'Minuti:',
-                'size_bytes':'Dimensioni:'
+                'time_secs':'Minuti: {}',
+                'size_bytes':'Dimensioni: {}',
+                'file':'Nome: {}'
             }
         @staticmethod
         def order():
@@ -4840,6 +4840,7 @@ if __name__ == "__main__":
                 "album_artist",
                 "artist_origin",
                 "composer",
+                "genre",
                 "track_num",
                 "disc_num",
                 "recording_date",
@@ -4927,7 +4928,7 @@ if __name__ == "__main__":
         @property
         @__check
         def genre(self) -> str:
-            return self.__mp3.tag.genre
+            return self.__mp3.tag.genre.name
 
         @genre.setter
         @__check
@@ -4972,14 +4973,14 @@ if __name__ == "__main__":
                 if t is None:
                     return (None,None,None,None,None,None)
                 
-                elif "T" in t:
+                elif "T" in (t:=str(t)):
                     t1,t2 = t.split("T")
                     t1=t1.split("-")
                     t2 = t2.split(":")
-                    return tuple(*t1,*(t2[i] if i<len(t2) else None for i in range(3)))
+                    return tuple((*t1,*(t2[i] if i<len(t2) else None for i in range(3))))
                 
                 t1=t.split("-")
-                return tuple(*(t1[i] if i<len(t1) else None for i in range(3)),None,None,None)
+                return tuple((*(t1[i] if i<len(t1) else None for i in range(3)),None,None,None))
 
             except:
                 return (None,None,None,None,None,None)
@@ -4987,31 +4988,32 @@ if __name__ == "__main__":
         @recording_date.setter
         @__check
         def recording_date(self,data:tuple[int,...]) -> None:
-            try:
-                year,*data = data
-                date = str(year)
-                mode = ("-{}","-{}","T{}",":{}",":{}")
-                for d,m in zip(data,mode):
-                    if data is None:
-                        break
-                    date+=m.format(d)
-                self.__mp3.tag.recording_date = date
-            except:
-                pass
+            year,*data = data
+            date = str(year)
+            mode = ("-{}","-{}","T{}",":{}",":{}")
+            for d,m in zip(data,mode):
+                if d is None:
+                    break
+                date+=m.format(d)
+            self.__mp3.tag.recording_date = date
 
         @property
         @__check
         def comments(self) -> list[tuple[str,str,bytes]]:
+            print(*((i.description,i.text,i.lang) for i in self.__mp3.tag.comments))
             return [(i.description,i.text) for i in self.__mp3.tag.comments]
         
         @comments.deleter
         @__check
         def comments(self, description:str|None=None) -> None:
-            if description:
+            print("!",*((i.description,i.text,i.lang) for i in self.__mp3.tag.comments))
+            if description is not None:
                 self.__mp3.tag.comments.remove(description)
                 return
-            for i in self.commenti:
-                self.__mp3.tag.comments.remove(i.description)
+            for i in self.__mp3.tag.comments:
+                print(i.text)
+                self.__mp3.tag.comments.remove(i.description,i.lang)
+            description
 
         @comments.setter
         @__check
@@ -5023,7 +5025,7 @@ if __name__ == "__main__":
         @property
         @__check
         def images(self) -> list[tuple[str,str,bytes]]:
-            return [(i.description,i.img_data,None) if i.image_data else (i.description,None,i.img_url) for i in self.__mp3.tag.images]
+            return [(i.description,i.image_data,None) if i.image_data else (i.description,None,i.img_url) for i in self.__mp3.tag.images]
 
         @images.deleter
         @__check
@@ -5031,7 +5033,7 @@ if __name__ == "__main__":
             if description:
                 self.__mp3.tag.images.remove(description)
                 return
-            for i in self.images:
+            for i in self.__mp3.tag.images:
                 self.__mp3.tag.images.remove(i.description)
 
         @images.setter
@@ -5048,7 +5050,7 @@ if __name__ == "__main__":
         @__check
         def time_secs(self) -> str:
             t = self.__mp3.info.time_secs
-            return f"{t//60}:{t%60}"
+            return f"{int(t//60)}:{int(t%60)}"
         
         @property
         @__check
@@ -5058,15 +5060,18 @@ if __name__ == "__main__":
         def close(self, utilities:Utilities=utilities) -> None:
             if self.__mp3:
                 self.__mp3.tag.save()
-                self.__mp3=None
 
             if utilities.settings['rename']:
-                t = self.newname(utilities)
+                t = self.newfile(utilities)
                 if t==self.file:
                     return
                 if osexists(osjoin(self.path,t)):
                     raise NameError(f"{t} already exists")
                 osrename(osjoin(self.path,self.file),osjoin(self.path,t))
+                self.file = t
+
+            if self.__mp3:
+                self.__mp3 = None
 
         def quit(self):
             if self.__mp3:
@@ -5695,173 +5700,339 @@ if __name__ == "__main__":
             self.save=False
             self.utilities.booleans.breaker()
             self.utilities.booleans[1] = True
+        
+        @staticmethod
+        def isdigit(x:str)->str:
+            return "".join(y for y in x if y.isdigit())
 
         def fastrun(self,starting:int=0):
             print(f"{starting:<10}{self.list_mp3[starting].file}")
 
         def run(self, starting:int=0):
-            print(f"{starting:<10}{self.list_mp3[starting].file}")
+            try:
+                print(f"{starting:<10}{self.list_mp3[starting].file}")
 
-            self.utilities.booleans.add()
+                self.utilities.booleans.add()
 
-            delete = "Rimuovi"
-            add = "Aggiungi"
-            stop = "Stop"
-            prev = "Precedente"
-            follow = "Prossima"
-            refresh = "Ricarica"
+                delete = "Rimuovi"
+                add = "Aggiungi"
+                stop = "Stop"
+                prev = "Precedente"
+                follow = "Prossima"
+                refresh = "Ricarica"
+                nr_tot = ("Nr","Tot")
+                calendar = ("AAAA","MM","DD","HH","MM","SS")
+                desc = "Descrizione"
+                content = "Contenuto"
 
-            t = pygame.font.SysFont("corbel",3)
-            s = pygame.Surface((1,1))
-            g = pygame.sprite.Group()
-            g_super = pygame.sprite.Group()
+                t = pygame.font.SysFont("corbel",3)
+                s = pygame.Surface((1,1))
+                g = pygame.sprite.Group()
+                g_super = pygame.sprite.Group()
+                little_menu = LittleMenu(t)
+                all_boxes = []
+                all_drops = []
 
-            prev_b = NormalButton(0,s,func=self.__prev)
-            follow_b = NormalButton(0,s,func=self.__follow)
-            stop_b = NormalButton(0,s,func=self.__stop)
-            refresh_b = NormalButton(0,s,func=self.__refresh)
-            g.add(prev_b,follow_b,stop_b,refresh_b)
+                prev_b = NormalButton(0,s,func=self.__prev)
+                follow_b = NormalButton(0,s,func=self.__follow)
+                stop_b = NormalButton(0,s,func=self.__stop)
+                refresh_b = NormalButton(0,s,func=self.__refresh)
+                g.add(prev_b,follow_b,stop_b,refresh_b)
 
-            droppable:dict[str,tuple[Drop|None,TextBox,list[pygame.Surface,pygame.Rect]]] = {}
-            boxes = {}
-            infos = {'file':["",None,None]}
+                droppable:dict[str,tuple[Drop|None,TextBox,list[pygame.Surface,pygame.Rect]]] = {}
+                boxes = {}
+                infos = {'file':["",None,None]}
 
-            for d,(k,v) in zip(self.utilities.settings["drop"],Song.droppable().items()):
+                for d,(k,v) in zip(self.utilities.settings["drop"],Song.droppable().items()):
 
-                b=TextBox(2,t,empty_text=v)
-                b.init_rect()
-                if int(d):
-                    droppable[k]=([v,None,None],Drop(b,k,t,2),b)
-                    g_super.add(droppable[k][1])
-                else:
-                    droppable[k]=([v,None,None],None,b)
-                    g.add(b)
-            
-            for k,v in Song.non_droppable().items():
+                    b=TextBox(2,t,empty_text=v)
+                    all_boxes.append(b)
+                    b.init_rect()
+                    if int(d):
+                        droppable[k]=([v,None,None],Drop(b,k,t,2),b)
+                        g_super.add(droppable[k][1])
+                        all_drops.append(droppable[k][1])
+                    else:
+                        droppable[k]=([v,None,None],None,b)
+                        g.add(b)
                 
-                if "num" in k:
-                    b = (TextBox(2,t,empty_text="Nr",max_char=6,rule=str.isnumeric),TextBox(2,t,empty_text="Tot",max_char=6,rule=str.isnumeric))
-                    for bb in b:
-                        bb.init_rect()
-                    g.add(*b)
-                    boxes[k]=([v,None,None],b)
-                    del bb
+                for k,v in Song.non_droppable().items():
                     
-                elif "data" in k:
-                    b = (TextBox(2,t,empty_text="AAAA",max_char=4,rule=str.isnumeric),TextBox(2,t,empty_text="MM",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="GG",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="HH",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="MM",max_char=2,rule=str.isnumeric),TextBox(2,t,empty_text="SS",max_char=2,rule=str.isnumeric))
-                    for bb in b:
-                        bb.init_rect()
-                    g.add(*b)
-                    boxes[k]=([v,None,None],b)
-                    del bb
-                
-                elif "commpents" == k:
-                    def __del(list_boxes:list[pygame.sprite.Sprite],starting = starting):
-                        del self.list_mp3[starting].images
-                        for box in list_boxes:
-                            box.kill()
-                        list_boxes.clear()
-                    
-                    def __add(list_boxes:list[pygame.sprite.Sprite],g:pygame.sprite.Group=g):
-                        list_boxes.append(TextBox(4,t,"","Descrizione",64))
-                        list_boxes.append(TextBox(4,t,"","Contenuto",1024))
-                    c=[]
-                    b = (NormalButton(0,s,func=__add, args=(c,)),NormalButton(0,s,func=__del, args=(c,)),c)
-                    g.add(*b[:2])
-                    boxes[k]=([v,None,None],b)
-
-                elif "images" == k:
-                    ...
-
-            for k,v in Song.info().items():
-                infos[k] = [v,None,None]
-
-            del t,s,b,bb,k,v,d
-
-            self.change_song = 0
-            self.save=True
-            self.utilities.booleans[1] = True
-            while self.utilities.booleans[1]:
-                self.utilities.booleans[1] = False
-
-                screen_rect = self.utilities.screen.get_rect()
-                black = self.utilities.colors["black"]
-
-                button_heigh = min(screen_rect.w//25,screen_rect.h//10)
-                font = pygame.font.SysFont(self.utilities.corbel,button_heigh)
-                small_font = pygame.font.Font(self.utilities.magic,int(button_heigh/2))
-                x = y = button_heigh
-                for k in Song.order():
-                    if k in droppable:
-                        drop = droppable[k]
-                        drop[0][1] = font.render(drop[0][0],True,black)
-                        drop[0][2] = drop[0][1].get_rect(x=x,y=y)
-                        drop[-1].replaceText(getattr(self.list_mp3[starting],k))
-                        drop[-1].refresh(screen_rect.w-(drop[0][2].right+button_heigh*2),font)
-                        r = drop[-1].init_rect(x=drop[0][2].righ+button_heigh,bottom=drop[0][2].bottom)
-                        if drop[-2] is not None:
-                            drop[-2].refresh(small_font,r.w)
-                            drop[-2].init_rect(bottomleft=r.bottomleft)
-                        y = r.bottom+button_heigh/2
-
-                    elif "num" in k:
-                        drop = boxes[k]
-                        drop[0][1] = font.render(drop[0][0],True,black)
-                        r = drop[0][2] = drop[0][1].get_rect(x=x,y=y)
-                        num = getattr(self.list_mp3[starting],k)
-                        for i,b in zip(num,drop[-1]):
-                            if i is None:
-                                b.replaceText("")
-                            else:
-                                b.replaceText(str(i))
-                            drop[-1].refresh(screen_rect.w/4,font)
-                            r = drop[-1].init_rect(x=r.righ+button_heigh,bottom=drop[0][2].bottom)
-
-                        y = r.bottom+button_heigh/2
-                        del num
-                    
-                    elif "data" in k:
-                        drop = boxes[k]
-                        drop[0][1] = font.render(drop[0][0],True,black)
-                        r = drop[0][2] = drop[0][1].get_rect(x=x,y=y)
-                        data = getattr(self.list_mp3[starting],k)
+                    if "num" in k:
+                        b = (TextBox(2,t,empty_text=nr_tot[0],max_char=6,rule=self.isdigit),TextBox(2,t,empty_text=nr_tot[1],max_char=6,rule=self.isdigit))
+                        all_boxes.extend(b)
+                        for bb in b:
+                            bb.init_rect()
+                        g.add(*b)
+                        boxes[k]=([v,None,None],b)
+                        del bb
                         
-                        for i,b in zip(data,drop[-1]):
-                            if i is None:
-                                b.replaceText("")
-                            else:
-                                b.replaceText(str(i))
-                            drop[-1].refresh(screen_rect.w/7,font)
-                            r = drop[-1].init_rect(x=r.righ+button_heigh,bottom=drop[0][2].bottom)
-
-                        y = r.bottom+button_heigh/2
-                        del data
-
-                    elif "commpents" == k:...
+                    elif "date" in k:
+                        b = (TextBox(2,t,empty_text=calendar[0],max_char=4,rule=self.isdigit),TextBox(2,t,empty_text=calendar[1],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[2],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[3],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[4],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[5],max_char=2,rule=self.isdigit))
+                        all_boxes.extend(b)
+                        for bb in b:
+                            bb.init_rect()
+                        g.add(*b)
+                        boxes[k]=([v,None,None],b)
+                        del bb
+                    
+                    elif "comments" == k:
+                        def __del(list_boxes:list[pygame.sprite.Sprite],starting = starting,all_boxes:list = all_boxes):
+                            
+                            del self.list_mp3[starting].comments
+                            for _ in range(len(list_boxes)):
+                                x = list_boxes.pop()
+                                all_boxes.remove(x)
+                                x.kill()
+                        
+                        def __add(list_boxes:list[pygame.sprite.Sprite],x,y,space,w,ww,font,this_b,g:pygame.sprite.Group=g,all_boxes = all_boxes):
+                            list_boxes.append(TextBox(w,font,"",desc,64))
+                            r = list_boxes[-1].init_rect(x=x,y=y)
+                            list_boxes.append(TextBox(ww,font,"",content,1024))
+                            list_boxes[-1].init_rect(x=r.right+space,y=y)
+                            g.add(list_boxes[-2:])
+                            all_boxes.extend(list_boxes[-2:])
+                            this_b.func.args=(*this_b.func.args[:2],r.bottom+space/2,*this_b.func.args[3:])
+                            
+                        c=[]
+                        b = (NormalButton(0,s,func=__add, args=(c,)),NormalButton(0,s,func=__del, args=(c,)),c)
+                        g.add(*b[:2])
+                        boxes[k]=([v,None,None],b)
+                        del __del,__add
 
                     elif "images" == k:
                         ...
 
+                for k,v in Song.info().items():
+                    infos[k] = [v,None,None]
+
+                del t,s,b,k,v,d
+
+                self.change_song = 0
+                self.save=False
+                self.utilities.booleans[1] = True
+                while self.utilities.booleans[1]:
+                    self.utilities.booleans[1] = False
+
+                    screen_rect = self.utilities.screen.get_rect()
+                    black = self.utilities.colors["black"]
+
+                    if self.utilities.settings['del_pics']:
+                        del self.list_mp3[starting].images
+
+                    button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+                    font = pygame.font.Font(self.utilities.magic,button_heigh)
+                    small_font = pygame.font.Font(self.utilities.magic,int(button_heigh/2))
+
+                    little_menu.refresh(small_font)
+
+                    x = y = button_heigh
+                    for k in Song.order():
+                        if k in droppable:
+                            drop = droppable[k]
+                            drop[0][1] = font.render(drop[0][0],True,black)
+                            drop[0][2] = drop[0][1].get_rect(x=x,y=y)
+                            drop[-1].replaceText(getattr(self.list_mp3[starting],k) if getattr(self.list_mp3[starting],k) else "")
+                            drop[-1].refresh(screen_rect.w-(drop[0][2].right+button_heigh*2),font)
+                            r = drop[-1].init_rect(x=drop[0][2].right+button_heigh,bottom=drop[0][2].bottom)
+                            if drop[-2] is not None:
+                                drop[-2].refresh(small_font,r.w)
+                                drop[-2].init_rect(bottomleft=r.bottomleft)
+                            y = r.bottom+button_heigh/2
+
+                        elif "num" in k:
+                            drop = boxes[k]
+                            drop[0][1] = font.render(drop[0][0],True,black)
+                            r = drop[0][2] = drop[0][1].get_rect(x=x,y=y)
+                            num = getattr(self.list_mp3[starting],k)
+                            for i,b in zip(num,drop[-1]):
+                                if i is None:
+                                    b.replaceText("")
+                                else:
+                                    b.replaceText(str(i))
+                                b.refresh(screen_rect.w/4,font)
+                                r = b.init_rect(x=r.right+button_heigh,bottom=drop[0][2].bottom)
+
+                            y = r.bottom+button_heigh/2
+                            del num
+                        
+                        elif "date" in k:
+                            drop = boxes[k]
+                            drop[0][1] = font.render(drop[0][0],True,black)
+                            r = drop[0][2] = drop[0][1].get_rect(x=x,y=y)
+                            data = getattr(self.list_mp3[starting],k)
+                            
+                            for i,b in zip(data,drop[-1]):
+                                if i is None:
+                                    b.replaceText("")
+                                else:
+                                    b.replaceText(str(i))
+                                b.refresh(screen_rect.w/10,font)
+                                r = b.init_rect(x=r.right+button_heigh,bottom=drop[0][2].bottom)
+
+                            y = r.bottom+button_heigh/2
+                            del data
+
+                        elif "comments" == k:
+                            drop = boxes[k]
+                            drop[0][1] = font.render(drop[0][0],True,black)
+                            drop[0][2] = drop[0][1].get_rect(x=x,y=y)
+                            drop[-1][0].refresh(0,font.render(add,True,black))
+                            r = drop[-1][0].init_rect(x=drop[0][2].right+button_heigh,bottom=drop[0][2].bottom)
+                            drop[-1][0].text_rect("center")
+                            drop[-1][1].refresh(0,font.render(delete,True,black))
+                            drop[-1][1].init_rect(x=r.right+button_heigh,bottom=drop[0][2].bottom)
+                            drop[-1][1].text_rect("center")
+                            comments = getattr(self.list_mp3[starting],k)
+                            y=r.bottom+button_heigh/2
+                            i=0
+                            dr = drop[-1][-1]
+                            for description,comment in comments:
+                                if i<len(dr):
+                                    dr[i].replaceText(description if description else "")
+                                    dr[i].refresh(screen_rect.w/4,font)
+                                    r = dr[i].init_rect(x=x,y=y)
+                                    i+=1
+                                    dr[i].replaceText(comment if comment else "")
+                                    dr[i].refresh(screen_rect.w/3*2,font)
+                                    r = dr[i].init_rect(x=r.right+button_heigh,bottom=r.bottom)
+                                    i+=1
+                                    y=r.bottom+button_heigh/2
+                                else:
+                                    dr.append(TextBox(screen_rect.w/4,font,description if description else "",desc,64))
+                                    r = dr[-1].init_rect(x=x,y=y)
+                                    dr.append(TextBox(screen_rect.w/3*2,font,comment if comment else "",content,1024))
+                                    dr[-1].init_rect(x=r.right+button_heigh,bottom=r.bottom)
+                                    i+=2
+                                    y=r.bottom+button_heigh/2
+                                    g.add(dr[-2:])
+                                    all_boxes.extend(dr[-2:])
+                            
+                            drop[-1][0].func.args=(drop[-1][0].func.args[0],x,y,button_heigh,screen_rect.w/4,screen_rect.w/3*2,font,drop[-1][0])
+                            
+                            for ob in dr[i:]:
+                                ob.kill()
+                            del dr[i:], comments
+                            
+                        elif "images" == k:
+                            ...
+
+                    width = min(max(
+                        font.size(stop)[0],
+                        font.size(prev)[0],
+                        font.size(follow)[0],
+                        font.size(refresh)[0]
+                    ),screen_rect.w/5)
+                    w = screen_rect.w/4
+                    x = w/2
+                    prev_b.refresh(width,font.render(prev,True,black),width)
+                    prev_b.init_rect(centerx=x,y=y)
+                    prev_b.text_rect()
+                    x+=w
+                    follow_b.refresh(width,font.render(follow,True,black),width)
+                    follow_b.init_rect(centerx=x,y=y)
+                    follow_b.text_rect()
+                    x+=w
+                    stop_b.refresh(width,font.render(stop,True,black),width)
+                    stop_b.init_rect(centerx=x,y=y)
+                    stop_b.text_rect()
+                    x+=w
+                    refresh_b.refresh(width,font.render(refresh,True,black),width)
+                    refresh_b.init_rect(centerx=x,y=y)
+                    refresh_b.text_rect()
+
+                    x=0
+                    for information in infos:
+                        infos[information][1] = small_font.render(infos[information][0].format(getattr(self.list_mp3[starting],information)),True,black)
+                        infos[information][2] = infos[information][1].get_rect(x=x,bottom=screen_rect.bottom)
+                        x=infos[information][2].right+button_heigh/2
+                    
+                    del width,w,x,y,information
+
+                    self.utilities.booleans[0] = True
+                    while self.utilities.booleans[0]:
+                        self.utilities.screen.tick()
+
+                        # events for the action
+                        pos = pygame.mouse.get_pos()
+                        event_list = pygame.event.get()
+                        self.utilities.booleans.update_start(event_list,True)
+
+                        if not self.utilities.booleans[0]:
+                            break
+
+                        for event in event_list:
+                            self.utilities.booleans.update_resizing(event)
+                        self.utilities.booleans.update_booleans()
+
+                        if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                            break
+                            
+                        for box in all_boxes:
+                            if box:
+                                box.opened_little_menu()
+                                little_menu.init(*pos, screen_rect, copy=box.little_copy, cut=box.little_cut, paste=box.little_paste)
+                                little_menu.update(event_list,pos)
+                                break
+                        else:
+                            if little_menu:
+                                little_menu.update(event_list,pos)
+                            for drop in all_drops:
+                                if drop:
+                                    drop.update(event_list,pos)
+                                    break
+                            else:
+                                g_super.update(event_list,pos)
+                                g.update(event_list,pos)
+
+                        if little_menu:
+                            self.utilities.screen.draw(little_menu)
+                            pygame.display.update(little_menu.get_rect())
+
+                        else:
+                            self.utilities.screen.fill(self.utilities.colors['background'])
+                            self.utilities.screen.draw(g)
+                            
+                            self.utilities.screen.draw(*(drop.box for drop in all_drops))
+                            for drop in all_drops:
+                                if drop:
+                                    self.utilities.screen.draw(drop)
+
+                            self.utilities.screen.blit(*(item[1:] for item,*_ in (droppable|boxes).values()))
+                            self.utilities.screen.blit(*(item[1:] for item in infos.values()))
+
+                            pygame.display.update()
+
+                    if self.save:
+                        for k,v in droppable.items():
+                            setattr(self.list_mp3[starting],k,str(v[-1]) if str(v[-1]) else None)
+                        for k,(_,v) in boxes.items():
+                            if "num" in k:
+                                setattr(self.list_mp3[starting],k,(str(v[0]) if str(v[0]) else None,str(v[1]) if str(v[1]) else None))
+                            if "date" in k:
+                                setattr(self.list_mp3[starting],k,tuple(str(vv) if str(vv) else None for vv in v))
 
 
-                self.utilities.booleans[0] = True
-                while self.utilities.booleans[0]:
-                    ...
 
-                if self.save:
-                    self.list_mp3[starting].close(self.utilities)
-                else:
-                    self.list_mp3[starting].quit()
+                        self.list_mp3[starting].close(self.utilities)
+                        self.save=False
+                    else:
+                        self.list_mp3[starting].quit()
+                    
+                    if self.change_song>0:
+                        self.change_song=0
+                        starting+=1
+                        self.utilities.booleans[1] = starting<len(self.list_mp3)
+                    elif self.change_song<0:
+                        self.change_song=0
+                        starting-=1
+                        self.utilities.booleans[1] = starting>=0
                 
-                if self.change_song>0:
-                    self.change_song=0
-                    starting+=1
-                    self.utilities.booleans[1] = starting<len(self.list_mp3)
-                elif self.change_song<0:
-                    self.change_song=0
-                    starting-=1
-                    self.utilities.booleans[1] = starting>=0
+            except Exception as e:
+                self.utilities.showError(str(e))
+        
             self.utilities.booleans.end()
+            self.utilities.booleans[1]=True
 
         # def __call__(self, wait:bool = False):
         #     self.utilities.booleans.add()
@@ -5969,7 +6140,12 @@ if __name__ == "__main__":
             Function to change the path of the directory
             '''
             self.search=True
-            self.path = osjoin(self.path,folder)
+            t = osjoin(self.path,folder)
+            try:
+                oslistdir(t)
+                self.path = t
+            except:
+                ...
         
         def get_foldersfiles(self) -> tuple[list[str],int]:
             '''
