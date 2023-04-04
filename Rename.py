@@ -4928,7 +4928,11 @@ if __name__ == "__main__":
         @property
         @__check
         def genre(self) -> str:
-            return self.__mp3.tag.genre.name
+            if self.__mp3.tag.genre:
+                return self.__mp3.tag.genre.name
+            else:
+                return self.__mp3.tag.genre
+            
 
         @genre.setter
         @__check
@@ -5837,7 +5841,7 @@ if __name__ == "__main__":
                             r = drop[-1].init_rect(x=drop[0][2].right+button_heigh,bottom=drop[0][2].bottom)
                             if drop[-2] is not None:
                                 drop[-2].refresh(small_font,r.w)
-                                drop[-2].init_rect(bottomleft=r.bottomleft)
+                                drop[-2].init_rect(topleft=r.bottomleft)
                             y = r.bottom+button_heigh/2
 
                         elif "num" in k:
@@ -6012,8 +6016,8 @@ if __name__ == "__main__":
                             if "date" in k:
                                 setattr(self.list_mp3[starting],k,tuple(str(vv) if str(vv) else None for vv in v))
 
-
-
+                        for drop in all_drops:
+                            drop.exit()
                         self.list_mp3[starting].close(self.utilities)
                         self.save=False
                     else:
