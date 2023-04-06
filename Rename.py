@@ -156,7 +156,7 @@ class INI(dict):
         "858,480",              #                           corresponding key
         0,                      #                           in the same index
         0,
-        '0000000',
+        '000000',
         '{title} - {artist} - {album}',
         0,
         '.'
@@ -4822,7 +4822,6 @@ if __name__ == "__main__":
                 "album":"Album",
                 "artist":"Artista",
                 "album_artist":"Artista album",
-                "artist_origin": "Artista originale",
                 "composer":"Compositore",
                 "genre":"Genere"
             }
@@ -4917,16 +4916,6 @@ if __name__ == "__main__":
         @__check
         def artist(self,artist:str) -> None:
             self.__mp3.tag.artist = artist
-
-        @property
-        @__check
-        def artist_origin(self) -> str:
-            return self.__mp3.tag.artist_origin
-
-        @artist_origin.setter
-        @__check
-        def artist_origin(self,artist_origin:str) -> None:
-            self.__mp3.tag.artist_origin = artist_origin
 
         @property
         @__check
@@ -5046,12 +5035,12 @@ if __name__ == "__main__":
 
         @images.deleter
         @__check
-        def images(self, description:str|None=None) -> None:
-            if description:
-                self.__mp3.tag.images.remove(description)
-                return
-            for i in self.__mp3.tag.images:
-                self.__mp3.tag.images.remove(i.description)
+        def images(self) -> None:
+            try:
+                for i in self.__mp3.tag.images:
+                    self.__mp3.tag.images.remove(i.description)
+            except:
+                pass
 
         @images.setter
         @__check
@@ -5105,7 +5094,6 @@ if __name__ == "__main__":
                 "album":"Single",
                 "artist":"We Are Magonia",
                 "album_artist":None,
-                "artist_origin": "Eurythmics",
                 "composer":"Annie Lennox, Dave Stewart",
                 "genre":"Remix",
                 "track_num": (1,None),
@@ -5124,7 +5112,6 @@ if __name__ == "__main__":
                 "album":"Album",
                 "artist":"Artista",
                 "album_artist":"Artista album",
-                "artist_origin": "Artista originale",
                 "composer":"Compositore",
                 "genre":"Genere",
                 "track_num": "Numero traccia",
@@ -5570,140 +5557,144 @@ if __name__ == "__main__":
         def __call__(self, wait:bool = False):
             self.utilities.booleans.add()
 
-            h_char = '日QpL`幽雅に咲墨桜石の国'
-            extension= ".mp3"
+            try:
+                h_char = '日QpL`幽雅に咲墨桜石の国'
+                extension= ".mp3"
 
-            self.list_mp3.clear()
-            self.list_mp3.extend(Song(self.utilities.settings["directory"],o) for o in oslistdir(self.utilities.settings["directory"]) if osisfile(osjoin(self.utilities.settings["directory"],o)) and o.endswith(extension))
+                self.list_mp3.clear()
+                self.list_mp3.extend(Song(self.utilities.settings["directory"],o) for o in oslistdir(self.utilities.settings["directory"]) if osisfile(osjoin(self.utilities.settings["directory"],o)) and o.endswith(extension))
 
-            title = "Choose a song"
-            start = "Start"
-            options = "Options"
+                title = "Choose a song"
+                start = "Start"
+                options = "Options"
 
-            v_bar = VerticalBar(5,200,100,50)
-            v_bar.init_rect(x=0,y=0)
-            bar = None
+                v_bar = VerticalBar(5,200,100,50)
+                v_bar.init_rect(x=0,y=0)
+                bar = None
 
-            max_lenght = 20_000
-            short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
-            title_s = [None,None]
-            if wait:
-                start_b = NormalButton(0,short_s[0],func=self.run)
-            else:
-                start_b = NormalButton(0,short_s[0],func=self.fastrun)
-            options_b = NormalButton(0,short_s[0],func=self.options)
-            g = pygame.sprite.Group(options_b,start_b)
-
-            self.utilities.booleans[1]=True
-            while self.utilities.booleans[1]:
-                self.utilities.booleans[1] = False
-
-                screen_rect = self.utilities.screen.get_rect()
-
-                title_heigh = min(screen_rect.w//20,screen_rect.h//10)*2
-                text_heigh = title_heigh//3
-                bigger_font = pygame.font.SysFont(self.utilities.corbel,title_heigh,True)
-                font = pygame.font.Font(self.utilities.magic,text_heigh)
-                text_heigh=max(text_heigh,font.size(h_char)[1],font.size(self.list_mp3[0].file)[1])
-
-                title_s[0] = bigger_font.render(title,True, self.utilities.colors["black"])
-                title_s[1] = title_s[0].get_rect(centerx = screen_rect.centerx,centery = title_heigh)
-
-                short_h = screen_rect.h-(text_heigh+title_heigh)*2
-                full_lenght = text_heigh*len(self.list_mp3)
-                if full_lenght>short_h:
-                    short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w-v_bar.button_length,short_h))
-                    short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
-                    long_s = tuple(pygame.Surface((short_s[1].w,max_lenght if max_lenght*k<full_lenght else full_lenght%max_lenght),pygame.SRCALPHA) for k in range(int(full_lenght//max_lenght)+1))
-
-                    v_bar.refresh(v_bar.button_length,short_s[1].h,full_lenght,short_s[1].h)
-                    v_bar.init_rect(right=screen_rect.w,y=short_s[1].y)
-                    bar = v_bar
+                max_lenght = 20_000
+                short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
+                title_s = [None,None]
+                if wait:
+                    start_b = NormalButton(0,short_s[0],func=self.run)
                 else:
-                    short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w,short_h))
-                    short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
-                    long_s = (pygame.Surface((short_s[1].w,full_lenght),pygame.SRCALPHA),)
+                    start_b = NormalButton(0,short_s[0],func=self.fastrun)
+                options_b = NormalButton(0,short_s[0],func=self.options)
+                g = pygame.sprite.Group(options_b,start_b)
 
-                    bar = None
-                    
-                y = 0
-                j=0
-                black = self.utilities.colors["black"]
-                for song in self.list_mp3:
-                    t = y%max_lenght
-                    long_s[j].blit(font.render(song.file,True,black),(0,t))
+                self.utilities.booleans[1]=True
+                while self.utilities.booleans[1]:
+                    self.utilities.booleans[1] = False
 
-                    if t+text_heigh>=max_lenght:
-                        j+=1
-                        long_s[j].blit(font.render(song.file,True,black),(0,t-max_lenght))
+                    screen_rect = self.utilities.screen.get_rect()
 
-                    y+=text_heigh
+                    title_heigh = min(screen_rect.w//20,screen_rect.h//10)*2
+                    text_heigh = title_heigh//3
+                    bigger_font = pygame.font.SysFont(self.utilities.corbel,title_heigh,True)
+                    font = pygame.font.Font(self.utilities.magic,text_heigh)
+                    text_heigh=max(text_heigh,font.size(h_char)[1],font.size(self.list_mp3[0].file)[1])
 
-                w = max(font.size(options)[0],font.size(start)[0])
-                options_b.refresh(w,font.render(options,True,black))
-                r = options_b.init_rect(centerx=screen_rect.w//3,centery=screen_rect.h-text_heigh)
-                options_b.text_rect()
-                start_b.refresh(w,font.render(start,True,black))
-                start_b.init_rect(centerx=screen_rect.w//3*2,centery=r.centery)
-                start_b.text_rect()
+                    title_s[0] = bigger_font.render(title,True, self.utilities.colors["black"])
+                    title_s[1] = title_s[0].get_rect(centerx = screen_rect.centerx,centery = title_heigh)
 
-                # del r,font,bigger_font
-                del r,bigger_font
+                    short_h = screen_rect.h-(text_heigh+title_heigh)*2
+                    full_lenght = text_heigh*len(self.list_mp3)
+                    if full_lenght>short_h:
+                        short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w-v_bar.button_length,short_h))
+                        short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
+                        long_s = tuple(pygame.Surface((short_s[1].w,max_lenght if max_lenght*k<full_lenght else full_lenght%max_lenght),pygame.SRCALPHA) for k in range(int(full_lenght//max_lenght)+1))
 
-                self.utilities.booleans[0] = True
-                while self.utilities.booleans[0]:
-                    self.utilities.screen.tick()
-
-                    # events for the action
-                    pos = pygame.mouse.get_pos()
-                    event_list = pygame.event.get()
-                    self.utilities.booleans.update_start(event_list,True)
-
-                    if not self.utilities.booleans[0]:
-                        break
-
-                    for event in event_list:
-                        self.utilities.booleans.update_resizing(event)
-
-                        if event.type==pygame.MOUSEBUTTONDOWN and event.button==1 and short_s[1].collidepoint(pos):
-                            if bar:
-                                w = int((pos[1]-short_s[1].y-float(bar))//text_heigh)
-                            else:
-                                w = int((pos[1]-short_s[1].y)//text_heigh)
-                            if w>=len(self.list_mp3):
-                                w=-1
-
-                        elif event.type==pygame.MOUSEBUTTONUP and event.button==1 and short_s[1].collidepoint(pos):
-                            if bar and w==(pos[1]-short_s[1].y-float(bar))//text_heigh:
-                                start_b.func(w)
-                            elif w==(pos[1]-short_s[1].y)//text_heigh:
-                                start_b.func(w)
-
-                    self.utilities.booleans.update_booleans()
-
-                    if not self.utilities.booleans[0] or self.utilities.booleans[1]:
-                        break
-                    
-                    g.update(event_list,pos)
-                    short_s[0].fill(self.utilities.colors.transparent)
-                    if bar:
-                        bar.update(event_list,pos)
-                        j=int(-float(bar)//max_lenght)
-                        y=float(bar)+max_lenght*j
-                        short_s[0].blit(long_s[j],(0,y))
-                        if y+max_lenght>0 and j+1<len(long_s):
-                            short_s[0].blit(long_s[j+1],(0,y+max_lenght))
+                        v_bar.refresh(v_bar.button_length,short_s[1].h,full_lenght,short_s[1].h)
+                        v_bar.init_rect(right=screen_rect.w,y=short_s[1].y)
+                        bar = v_bar
                     else:
-                        short_s[0].blit(long_s[0],(0,0))
+                        short_s[0] = pygame.transform.scale(short_s[0],(screen_rect.w,short_h))
+                        short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
+                        long_s = (pygame.Surface((short_s[1].w,full_lenght),pygame.SRCALPHA),)
 
-                    self.utilities.screen.fill(self.utilities.colors["background"])
-                    self.utilities.screen.blit(title_s,short_s)
-                    self.utilities.screen.draw(g)
-                    if bar:
-                        self.utilities.screen.draw(bar)
+                        bar = None
+                        
+                    y = 0
+                    j=0
+                    black = self.utilities.colors["black"]
+                    for song in self.list_mp3:
+                        t = y%max_lenght
+                        long_s[j].blit(font.render(song.file,True,black),(0,t))
 
-                    pygame.display.update()
-                    
+                        if t+text_heigh>=max_lenght:
+                            j+=1
+                            long_s[j].blit(font.render(song.file,True,black),(0,t-max_lenght))
+
+                        y+=text_heigh
+
+                    w = max(font.size(options)[0],font.size(start)[0])
+                    options_b.refresh(w,font.render(options,True,black))
+                    r = options_b.init_rect(centerx=screen_rect.w//3,centery=screen_rect.h-text_heigh)
+                    options_b.text_rect()
+                    start_b.refresh(w,font.render(start,True,black))
+                    start_b.init_rect(centerx=screen_rect.w//3*2,centery=r.centery)
+                    start_b.text_rect()
+
+                    # del r,font,bigger_font
+                    del r,bigger_font
+
+                    self.utilities.booleans[0] = True
+                    while self.utilities.booleans[0]:
+                        self.utilities.screen.tick()
+
+                        # events for the action
+                        pos = pygame.mouse.get_pos()
+                        event_list = pygame.event.get()
+                        self.utilities.booleans.update_start(event_list,True)
+
+                        if not self.utilities.booleans[0]:
+                            break
+
+                        for event in event_list:
+                            self.utilities.booleans.update_resizing(event)
+
+                            if event.type==pygame.MOUSEBUTTONDOWN and event.button==1 and short_s[1].collidepoint(pos):
+                                if bar:
+                                    w = int((pos[1]-short_s[1].y-float(bar))//text_heigh)
+                                else:
+                                    w = int((pos[1]-short_s[1].y)//text_heigh)
+                                if w>=len(self.list_mp3):
+                                    w=-1
+
+                            elif event.type==pygame.MOUSEBUTTONUP and event.button==1 and short_s[1].collidepoint(pos):
+                                if bar and w==(pos[1]-short_s[1].y-float(bar))//text_heigh:
+                                    start_b.func(w)
+                                elif w==(pos[1]-short_s[1].y)//text_heigh:
+                                    start_b.func(w)
+
+                        self.utilities.booleans.update_booleans()
+
+                        if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                            break
+                        
+                        g.update(event_list,pos)
+                        short_s[0].fill(self.utilities.colors.transparent)
+                        if bar:
+                            bar.update(event_list,pos)
+                            j=int(-float(bar)//max_lenght)
+                            y=float(bar)+max_lenght*j
+                            short_s[0].blit(long_s[j],(0,y))
+                            if y+max_lenght>0 and j+1<len(long_s):
+                                short_s[0].blit(long_s[j+1],(0,y+max_lenght))
+                        else:
+                            short_s[0].blit(long_s[0],(0,0))
+
+                        self.utilities.screen.fill(self.utilities.colors["background"])
+                        self.utilities.screen.blit(title_s,short_s)
+                        self.utilities.screen.draw(g)
+                        if bar:
+                            self.utilities.screen.draw(bar)
+
+                        pygame.display.update()
+                        
+            except Exception as e:
+                self.utilities.showError(str(e))
+
             self.utilities.booleans.end()
         
         def __prev(self):
@@ -5728,7 +5719,124 @@ if __name__ == "__main__":
             return "".join(y for y in x if y.isdigit())
 
         def fastrun(self,starting:int=0):
-            print(f"{starting:<10}{self.list_mp3[starting].file}")
+            self.utilities.booleans.add()
+
+            if not utilities.settings['rename']:
+                self.utilities.booleans.end()
+                return 
+            
+            try:
+                stop = "Interrompi"
+                cont = "Continua"
+                wait = "Aspetta"
+                work = [True]
+                wait_s = [None,None]
+                num_s = [None,None]
+                file_s = [None,pygame.Rect(0,0,0,0)]
+                surfaces=(wait_s,num_s,file_s)
+                name = ""
+                black = self.utilities.colors["black"]
+
+                error="Errore.txt"
+                explaining = "\n\Convertendo: {} \t-->\t {}"
+                breaked = False
+
+                def s():
+                    if s.work[0]:
+                        s.work[0] = False
+                        return
+                    self.utilities.booleans.breaker()
+                s.work = work
+
+                def c():
+                    c.work[0] = True
+                c.work = work
+
+                t = pygame.Surface((1,1))
+                stop_b = NormalButton(0,t,func=s)
+                cont_b = NormalButton(0,t,func=c)
+
+                self.utilities.booleans[1] = True
+                while self.utilities.booleans[1]:
+                    self.utilities.booleans[1] = False
+
+                    screen_rect = self.utilities.screen.get_rect()
+                    
+                    button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+                    bigger_font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2,True)
+                    font = pygame.font.Font(self.utilities.magic,button_heigh)
+                    small_font = pygame.font.SysFont(self.utilities.corbel,int(button_heigh/2))
+
+                    wait_s[0] = bigger_font.render(wait,True,black)
+                    wait_s[1] = wait_s[0].get_rect(centerx=screen_rect.centerx,centery=button_heigh/2*3)
+                    num_s[1] = (0,screen_rect.h-button_heigh/2)
+                    file_s[1] = (0,screen_rect.centery)
+
+                    w_min = min(small_font.size(stop)[0],small_font.size(cont)[0])
+                    stop_b.refresh(w_min,small_font.render(stop,True,black))
+                    stop_b.init_rect(centerx=screen_rect.w/3,centery=screen_rect.h/4*3)
+                    stop_b.text_rect()
+                    cont_b.refresh(w_min,small_font.render(cont,True,black))
+                    cont_b.init_rect(centerx=screen_rect.w/3*2,centery=screen_rect.h/4*3)
+                    cont_b.text_rect()
+
+                    self.utilities.booleans[0] = True
+                    for starting in range(starting,len(self.list_mp3)):
+                        try:
+                            name = self.list_mp3[starting].file
+                            if self.utilities.settings['del_pics']:
+                                del self.list_mp3[starting].images
+                            
+                            self.list_mp3[starting].close()
+
+                        except:
+                            try:
+                                if breaked:
+                                    with open(error,"a",encoding=self.utilities.decoder) as e:
+                                        e.write(explaining.format(self.list_mp3[starting].file,self.list_mp3[starting].newfile()))
+                                else:
+                                    breaked=True
+                                    with open(error,"w+",encoding=self.utilities.decoder) as e:
+                                        e.write("Error while renaming the following files into")
+                                        e.write(explaining.format(self.list_mp3[starting].file,self.list_mp3[starting].newfile(self.utilities)))
+                            except Exception as e:
+                                self.utilities.showError(str(e))
+                            
+                            self.list_mp3[starting].quit()
+
+                        num_s[0] = small_font.render(str(starting),True,black)
+                        file_s[0] = font.render(name,True,black)
+                        
+                        # events for the action
+                        pos = pygame.mouse.get_pos()
+                        event_list = pygame.event.get()
+                        self.utilities.booleans.update_start(event_list,True)
+
+                        if not self.utilities.booleans[0]:
+                            break
+
+                        for event in event_list:
+                            self.utilities.booleans.update_resizing(event)
+                        self.utilities.booleans.update_booleans()
+
+                        stop_b.update(event_list,pos)
+                        if work[0]:
+                            cont_b.update(event_list,pos)
+
+                        if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                            break
+                        
+                        self.utilities.screen.fill(self.utilities.colors['background'])
+                        self.utilities.screen.blit(*surfaces)
+                        self.utilities.screen.draw(stop_b)
+                        if work[0]:
+                            self.utilities.screen.draw(cont_b)
+
+            except Exception as e:
+                self.utilities.showError(str(e))
+
+            self.utilities.booleans.end()
+            self.utilities.booleans[1]=True
 
         def run(self, starting:int=0):
             self.utilities.booleans.add()
