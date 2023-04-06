@@ -3539,6 +3539,7 @@ class Drop(pygame.sprite.Sprite):
         length:int,
         quantity:int = 5,
         txt_color:str = "white",
+        bk_color:str = "gray",
         bt_hover_color:str='dark_gray',
         bt_clicked_color:str='black',
         utilities: Utilities=utilities
@@ -3554,7 +3555,7 @@ class Drop(pygame.sprite.Sprite):
         self.length = length
         self.box = box
         self.font = font
-        self.colors = (txt_color, bt_hover_color, bt_clicked_color)
+        self.colors = (txt_color, bk_color, bt_hover_color, bt_clicked_color)
         
         self.h = font.size("A")[1]
         self.rect = None
@@ -3570,7 +3571,7 @@ class Drop(pygame.sprite.Sprite):
         from re import escape,IGNORECASE
         self._finder = lambda x,y: match(f".*{escape(x)}.*",y,IGNORECASE)
 
-        self.file = file
+        self.file = file+".__"
         self.data = []
         self.buttons = []
         self.findet = []
@@ -3623,7 +3624,7 @@ class Drop(pygame.sprite.Sprite):
         if osexists(self.file):
             self._shower(self.file)
 
-            with open(self.file+".__", "r", encoding=self.utilities.decoder) as file:
+            with open(self.file, "r", encoding=self.utilities.decoder) as file:
                 self.data.extend(file.read().split("\n"))
             
             self._hidder(self.file)
@@ -3633,7 +3634,7 @@ class Drop(pygame.sprite.Sprite):
         if self.data:
             self.__append(data)
         else:
-            with open(self.file+".__", "w", encoding=self.utilities.decoder) as file:
+            with open(self.file, "w", encoding=self.utilities.decoder) as file:
                 file.write(data)
         
         self._hidder(self.file)
@@ -3643,7 +3644,7 @@ class Drop(pygame.sprite.Sprite):
 
         self._shower(self.file)
 
-        with open(self.file+".__", "a", encoding=self.utilities.decoder) as file:
+        with open(self.file, "a", encoding=self.utilities.decoder) as file:
             file.write("\n"+data)
         
     def __find(self) -> None:
@@ -3656,9 +3657,9 @@ class Drop(pygame.sprite.Sprite):
                     self.length-self.h//2,
                     self.font.render(f,True,self.utilities.colors[self.colors[0]]),
                     self.length-self.h//2,
-                    bt_normal_color=self.colors[1],
-                    bt_hover_color=self.colors[2],
-                    bt_pressed_color=self.colors[2],
+                    bt_normal_color=self.colors[2],
+                    bt_hover_color=self.colors[3],
+                    bt_pressed_color=self.colors[3],
                     func=self.box.replaceText,
                     args=(f,)
                 ) for f in findet
@@ -3709,7 +3710,7 @@ class Drop(pygame.sprite.Sprite):
     def update(
         self,
         event_list:list[pygame.event.Event],
-        pos:tuple[int,int]=None
+        pos:tuple[int,int]
         ) -> None:
         """
         It checks every event to update the button 
@@ -3722,7 +3723,7 @@ class Drop(pygame.sprite.Sprite):
                                                         the image
         """
 
-        hover = self.rect.collidepoint(pos) if pos else False
+        hover = self.rect.collidepoint(pos)
         clicked = self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONDOWN,event_list) or self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONUP,event_list)
         self.box.update(event_list,pos)
         if self.active and hover and clicked:
@@ -3731,7 +3732,7 @@ class Drop(pygame.sprite.Sprite):
         if self.box.has_changed():
             self.__find()
 
-        self.image.fill(self.utilities.colors.transparent)
+        self.image.fill(self.utilities.colors[self.colors[1],100])
 
         if self.prev_status ^ self.box.is_writable():
             self.active = self.prev_status = self.box.is_writable()
@@ -3787,7 +3788,7 @@ class Drop(pygame.sprite.Sprite):
         return self.rect.inflate(4,4)
 
     def exit(self) -> None:
-        t = str(self.box)
+        t = str(self.box).strip()
         if t not in self.data:
             self.__write(t)
 
@@ -5008,7 +5009,6 @@ if __name__ == "__main__":
                 if d is None:
                     break
                 date+=m.format(d)
-            print(date)
             self.__mp3.tag.recording_date = date
 
         @property
@@ -5017,7 +5017,6 @@ if __name__ == "__main__":
             if not self.__comments:
                 self.__mp3__comments = self.__mp3.tag.comments
                 self.__comments = [(i.description,i.text,i.lang) for i in self.__mp3__comments]
-                print(*self.__comments)
             return self.__comments
         
         @comments.deleter
@@ -5025,7 +5024,6 @@ if __name__ == "__main__":
         def comments(self) -> None:
             for i in self.comments:
                 self.__mp3__comments.remove(i[0],i[2])
-            print(*(i for i in self.__mp3__comments))
 
         @comments.setter
         @__check
@@ -5076,19 +5074,17 @@ if __name__ == "__main__":
 
             if utilities.settings['rename']:
                 t = self.newfile(utilities)
-                if t==self.file:
-                    return
-                if osexists(osjoin(self.path,t)):
-                    raise NameError(f"{t} already exists")
-                osrename(osjoin(self.path,self.file),osjoin(self.path,t))
-                self.file = t
+                if t!=self.file:
+                    if osexists(osjoin(self.path,t)):
+                        raise NameError(f"{t} already exists")
+                    osrename(osjoin(self.path,self.file),osjoin(self.path,t))
+                    self.file = t
 
             self.quit()
 
         def quit(self):
             if self.__mp3:
                 self.__mp3= None
-            if self.__comments:
                 self.__comments = None
                 self.__mp3__comments = None
 
@@ -5715,7 +5711,6 @@ if __name__ == "__main__":
         def __refresh(self):
             self.change_song=0
             self.save=False
-            self.utilities.booleans.breaker()
             self.utilities.booleans[1] = True
         
         @staticmethod
@@ -5727,10 +5722,8 @@ if __name__ == "__main__":
 
         def run(self, starting:int=0):
             self.utilities.booleans.add()
+            
             try:
-                print(f"{starting:<10}{self.list_mp3[starting].file}")
-
-
                 delete = "Rimuovi"
                 add = "Aggiungi"
                 stop = "Stop"
@@ -6013,10 +6006,7 @@ if __name__ == "__main__":
                                 for drop in all_drops:
                                     if drop:
                                         if bar:
-                                            if shorter.get_rect().collidepoint(pos):
-                                                drop.update(event_list,(pos[0],pos[1]-float(bar)))
-                                            else:
-                                                drop.update(event_list)
+                                            drop.update(event_list,(pos[0],pos[1]-float(bar)))
                                         else:
                                             drop.update(event_list,pos)
                                         break
@@ -6027,7 +6017,7 @@ if __name__ == "__main__":
                                             g_super.update(event_list,(pos[0],pos[1]-float(bar)))
                                             g.update(event_list,(pos[0],pos[1]-float(bar)))
                                         else:
-                                            g_super.update(event_list,None)
+                                            g_super.update(event_list,(pos[0],pos[1]-float(bar)))
                                             g.update(event_list,None)
                                     else:
                                         g_super.update(event_list,pos)
@@ -6103,89 +6093,6 @@ if __name__ == "__main__":
             self.utilities.booleans.end()
             self.utilities.booleans[1]=True
 
-        # def __call__(self, wait:bool = False):
-        #     self.utilities.booleans.add()
-        #     self.wait = wait
-
-        #     t = pygame.font.SysFont("corbel",2)
-        #     test = TextBox(22, t, initial_text="ciao", empty_text="riempimi", max_char=500, bar_color="black")
-        #     r = test.init_rect(x=0,y=0)
-        #     drop = Drop(test,"test.txt",t,r.w,2)
-        #     btn = NormalButton(0,pygame.Surface((10,10)),func=drop.exit)
-        #     little_menu = LittleMenu(t)
-
-        #     self.utilities.booleans[1] = True
-        #     while self.utilities.booleans[1]:
-        #         self.utilities.booleans[1] = False
-
-        #         screen_rect = self.utilities.screen.get_rect()
-
-        #         button_heigh = min(screen_rect.w//25,screen_rect.h//10)
-        #         little_font = pygame.font.Font(self.utilities.magic,button_heigh)
-        #         font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
-            
-        #         test.refresh(screen_rect.w/5*4, font)
-        #         r = test.init_rect(centerx=screen_rect.centerx,y=screen_rect.h/4)
-        #         drop.refresh(little_font,r.w)
-        #         drop.init_rect(topleft = r.bottomleft)
-        #         little_menu.refresh(little_font)
-
-        #         btn.refresh(screen_rect.w/4,font.render("Ecco",True,self.utilities.colors["black"]),r.w)
-        #         btn.init_rect(centerx = screen_rect.w/2, bottom=screen_rect.bottom)
-        #         btn.text_rect("center")
-            
-        #         self.utilities.booleans[0] = True
-        #         while self.utilities.booleans[0]:
-        #             self.utilities.screen.tick()
-
-        #             # events for the action
-        #             pos = pygame.mouse.get_pos()
-        #             event_list = pygame.event.get()
-        #             self.utilities.booleans.update_start(event_list,True)
-
-        #             if not self.utilities.booleans[0]:
-        #                 break
-
-        #             for event in event_list:
-        #                 self.utilities.booleans.update_resizing(event)
-        #             self.utilities.booleans.update_booleans()
-
-        #             if not self.utilities.booleans[0] or self.utilities.booleans[1]:
-        #                 break
-                    
-        #             if test:
-        #                 test.opened_little_menu()
-        #                 little_menu.init(*pos, screen_rect, copy=test.little_copy, cut=test.little_cut, paste=test.little_paste)
-        #                 little_menu.update(event_list,pos)
-
-        #             elif little_menu:
-        #                 little_menu.update(event_list,pos)
-
-        #             elif drop:
-        #                 drop.update(event_list,pos)
-        #             else:
-        #                 drop.update(event_list,pos)
-        #                 btn.update(event_list,pos)
-                    
-                    
-        #             if little_menu:
-        #                 self.utilities.screen.draw(little_menu)
-        #                 pygame.display.update(little_menu.get_rect())
-
-        #             else:
-        #                 self.utilities.screen.fill(self.utilities.colors['background'])
-
-        #                 if drop:
-        #                     self.utilities.screen.draw(drop)
-        #                 else:
-        #                     self.utilities.screen.draw(test)
-                        
-        #                 self.utilities.screen.draw(btn)
-                        
-        #                 pygame.display.update()
-            
-        #     self.utilities.booleans.end()
-    
     class Start:
         """
         This class is used to be able to change folder.
