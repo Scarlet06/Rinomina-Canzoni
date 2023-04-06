@@ -3365,6 +3365,9 @@ class TextBox(pygame.sprite.Sprite):
         self._text_surf.clear()
         self._k=self._kk=self._i=0
 
+        if not self._changed:
+            self._changed = True
+
     def replaceText(self, new_text:str) -> None:
         '''
         This function replaces the text with the given one
@@ -6339,13 +6342,13 @@ if __name__ == "__main__":
                     self.utilities.booleans[1] = False
 
                     #dimensions to use
-                    little_width = screen_rect.w/8*7
+                    little_width = screen_rect.w/10*9
                     button_heigh = min(screen_rect.w//25,screen_rect.h//10)
                     little_font = pygame.font.Font(self.utilities.magic,button_heigh)
                     fontone = pygame.font.Font(self.utilities.magic,button_heigh*3)
                     font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
                     
-                    if screen_rect.w <= little_font.size(counter.format(with_files,1))[0]+little_width+font.size(sub_t)[0]:
+                    if screen_rect.w <= little_font.size(counter.format(with_files,1))[0]+screen_rect.w/5+font.size(sub_t)[0]:
                         button_heigh = int(button_heigh*0.7)
                         little_font = pygame.font.Font(self.utilities.magic,button_heigh)
                         fontone = pygame.font.Font(self.utilities.magic,button_heigh*3)
