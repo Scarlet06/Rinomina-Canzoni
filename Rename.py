@@ -2619,7 +2619,7 @@ class TextBox(pygame.sprite.Sprite):
     def update(
         self,
         event_list:list[pygame.event.Event],
-        pos:tuple[int,int],
+        pos:tuple[int,int]=None,
         colors: Colors=utilities.colors
         ) -> None:
         """
@@ -2634,7 +2634,7 @@ class TextBox(pygame.sprite.Sprite):
         """
 
         # It checks the collision of the mouse with the button
-        hover = self.rect.collidepoint(pos)
+        hover = self.rect.collidepoint(pos) if pos else False
 
         # It checks every event given from the pc
         for event in event_list:
@@ -3538,9 +3538,9 @@ class Drop(pygame.sprite.Sprite):
         font:pygame.font.Font,
         length:int,
         quantity:int = 5,
-        txt_color:str = "black",
-        bt_hover_color:str='gray',
-        bt_clicked_color:str='white',
+        txt_color:str = "white",
+        bt_hover_color:str='dark_gray',
+        bt_clicked_color:str='black',
         utilities: Utilities=utilities
         ) -> None:
 
@@ -3560,7 +3560,7 @@ class Drop(pygame.sprite.Sprite):
         self.rect = None
         self.image = pygame.Surface((self.length,self.h*quantity),pygame.SRCALPHA)
         self.long_image = pygame.Surface((1,1),pygame.SRCALPHA)
-        self.v_bar = VerticalBar(4,40,30,15)
+        self.v_bar = VerticalBar(4,40,30,15,bar_color="dark_gray")
         self.bar = None
         self.g = pygame.sprite.Group()
 
@@ -3589,33 +3589,41 @@ class Drop(pygame.sprite.Sprite):
         self.font = font
         self.h = font.size("A")[1]
 
-        self.rect = None
         self.image = pygame.transform.scale(self.image,(self.length,self.h*self.quantity))
+        self.rect = self.image.get_rect()
+        
+        if self.box.has_changed():
+            self.__find()
+        else:
 
-        x=y=0
-        for button,text in zip(self.buttons,self.findet):
-    
-            button.refresh(
-                length-self.h//2,
-                font.render(text,True,self.utilities.colors[self.colors[0]]),
-                length-self.h//2
-                )
+            x=y=0
+            for button,text in zip(self.buttons,self.findet):
+        
+                button.refresh(
+                    length-self.h//2,
+                    font.render(text,True,self.utilities.colors[self.colors[0]]),
+                    length-self.h//2
+                    )
+                
+                y+=button.init_rect(x=x,y=y).h
+                button.text_rect(self.center)
             
-            y+=button.init_rect(x=x,y=y).h
-            button.text_rect(self.center)
+            self.long_image = pygame.transform.scale(self.long_image, (length,y))
 
-        self.long_image = pygame.transform.scale(self.long_image, (length,y))
-
-        if len(self.buttons)>1:
-            self.v_bar.refresh(self.h,self.rect.h,y,self.rect.h)
-            self.v_bar.init_rect(right = self.length,y=0)
+            if len(self.buttons)>1:
+                self.v_bar.refresh(self.h//2,self.rect.h,y,self.h)
+                self.v_bar.init_rect(right = self.length,y=0)
+                self.bar = self.v_bar
+            else:
+                self.bar = None
+        self.rect = None
 
     def __read(self):
         
         if osexists(self.file):
             self._shower(self.file)
 
-            with open(self.file, "r", encoding=self.utilities.decoder) as file:
+            with open(self.file+".__", "r", encoding=self.utilities.decoder) as file:
                 self.data.extend(file.read().split("\n"))
             
             self._hidder(self.file)
@@ -3625,7 +3633,7 @@ class Drop(pygame.sprite.Sprite):
         if self.data:
             self.__append(data)
         else:
-            with open(self.file, "w", encoding=self.utilities.decoder) as file:
+            with open(self.file+".__", "w", encoding=self.utilities.decoder) as file:
                 file.write(data)
         
         self._hidder(self.file)
@@ -3635,7 +3643,7 @@ class Drop(pygame.sprite.Sprite):
 
         self._shower(self.file)
 
-        with open(self.file, "a", encoding=self.utilities.decoder) as file:
+        with open(self.file+".__", "a", encoding=self.utilities.decoder) as file:
             file.write("\n"+data)
         
     def __find(self) -> None:
@@ -3663,7 +3671,7 @@ class Drop(pygame.sprite.Sprite):
             self.long_image = pygame.transform.scale(self.long_image, (self.length,y))
             
             if len(self.buttons)>1:
-                self.v_bar.refresh(self.h//3,self.rect.h,y,self.rect.h)
+                self.v_bar.refresh(self.h//2,self.rect.h,y,self.h)
                 self.v_bar.init_rect(right = self.length,y=0)
                 self.bar = self.v_bar
             else:
@@ -3701,7 +3709,7 @@ class Drop(pygame.sprite.Sprite):
     def update(
         self,
         event_list:list[pygame.event.Event],
-        pos:tuple[int,int]
+        pos:tuple[int,int]=None
         ) -> None:
         """
         It checks every event to update the button 
@@ -3714,7 +3722,7 @@ class Drop(pygame.sprite.Sprite):
                                                         the image
         """
 
-        hover = self.rect.collidepoint(pos)
+        hover = self.rect.collidepoint(pos) if pos else False
         clicked = self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONDOWN,event_list) or self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONUP,event_list)
         self.box.update(event_list,pos)
         if self.active and hover and clicked:
@@ -4852,6 +4860,8 @@ if __name__ == "__main__":
             self.path = path
             self.file = file
             self.__mp3:eyed3.AudioFile = None
+            self.__comments = None
+            self.__mp3__comments = None
         
         @staticmethod
         def __check(func):
@@ -4933,7 +4943,6 @@ if __name__ == "__main__":
             else:
                 return self.__mp3.tag.genre
             
-
         @genre.setter
         @__check
         def genre(self,genre:str) -> None:
@@ -4999,32 +5008,32 @@ if __name__ == "__main__":
                 if d is None:
                     break
                 date+=m.format(d)
+            print(date)
             self.__mp3.tag.recording_date = date
 
         @property
         @__check
         def comments(self) -> list[tuple[str,str,bytes]]:
-            print(*((i.description,i.text,i.lang) for i in self.__mp3.tag.comments))
-            return [(i.description,i.text) for i in self.__mp3.tag.comments]
+            if not self.__comments:
+                self.__mp3__comments = self.__mp3.tag.comments
+                self.__comments = [(i.description,i.text,i.lang) for i in self.__mp3__comments]
+                print(*self.__comments)
+            return self.__comments
         
         @comments.deleter
         @__check
-        def comments(self, description:str|None=None) -> None:
-            print("!",*((i.description,i.text,i.lang) for i in self.__mp3.tag.comments))
-            if description is not None:
-                self.__mp3.tag.comments.remove(description)
-                return
-            for i in self.__mp3.tag.comments:
-                print(i.text)
-                self.__mp3.tag.comments.remove(i.description,i.lang)
-            description
+        def comments(self) -> None:
+            for i in self.comments:
+                self.__mp3__comments.remove(i[0],i[2])
+            print(*(i for i in self.__mp3__comments))
 
         @comments.setter
         @__check
-        def comments(self, data:tuple[str,str]) -> None:
+        def comments(self, data:tuple[tuple[str,str],...]) -> None:
             "data is a tuple of description and text"
-            description,text = data
-            self.__mp3.tag.comments.set(text,description)
+            self.comments
+            for d in data:
+                self.__mp3__comments.set(*d)
 
         @property
         @__check
@@ -5074,12 +5083,14 @@ if __name__ == "__main__":
                 osrename(osjoin(self.path,self.file),osjoin(self.path,t))
                 self.file = t
 
-            if self.__mp3:
-                self.__mp3 = None
+            self.quit()
 
         def quit(self):
             if self.__mp3:
                 self.__mp3= None
+            if self.__comments:
+                self.__comments = None
+                self.__mp3__comments = None
 
         @staticmethod
         def example() -> dict[str,str]:
@@ -5627,7 +5638,7 @@ if __name__ == "__main__":
                 r = options_b.init_rect(centerx=screen_rect.w//3,centery=screen_rect.h-text_heigh)
                 options_b.text_rect()
                 start_b.refresh(w,font.render(start,True,black))
-                start_b.init_rect(centerx=r.x*2,centery=r.centery)
+                start_b.init_rect(centerx=screen_rect.w//3*2,centery=r.centery)
                 start_b.text_rect()
 
                 # del r,font,bigger_font
@@ -5653,6 +5664,8 @@ if __name__ == "__main__":
                                 w = int((pos[1]-short_s[1].y-float(bar))//text_heigh)
                             else:
                                 w = int((pos[1]-short_s[1].y)//text_heigh)
+                            if w>=len(self.list_mp3):
+                                w=-1
 
                         elif event.type==pygame.MOUSEBUTTONUP and event.button==1 and short_s[1].collidepoint(pos):
                             if bar and w==(pos[1]-short_s[1].y-float(bar))//text_heigh:
@@ -5713,10 +5726,10 @@ if __name__ == "__main__":
             print(f"{starting:<10}{self.list_mp3[starting].file}")
 
         def run(self, starting:int=0):
+            self.utilities.booleans.add()
             try:
                 print(f"{starting:<10}{self.list_mp3[starting].file}")
 
-                self.utilities.booleans.add()
 
                 delete = "Rimuovi"
                 add = "Aggiungi"
@@ -5733,15 +5746,20 @@ if __name__ == "__main__":
                 s = pygame.Surface((1,1))
                 g = pygame.sprite.Group()
                 g_super = pygame.sprite.Group()
+                g_diff = pygame.sprite.Group()
                 little_menu = LittleMenu(t)
                 all_boxes = []
                 all_drops = []
+                v_bar = VerticalBar.scroller(pygame.Rect(0,0,10,100),150)
+                bar =None
+                shorter = pygame.Surface((1,1),pygame.SRCALPHA)
+                longer = pygame.Surface((1,1),pygame.SRCALPHA)
 
                 prev_b = NormalButton(0,s,func=self.__prev)
                 follow_b = NormalButton(0,s,func=self.__follow)
                 stop_b = NormalButton(0,s,func=self.__stop)
                 refresh_b = NormalButton(0,s,func=self.__refresh)
-                g.add(prev_b,follow_b,stop_b,refresh_b)
+                g_diff.add(prev_b,follow_b,stop_b,refresh_b)
 
                 droppable:dict[str,tuple[Drop|None,TextBox,list[pygame.Surface,pygame.Rect]]] = {}
                 boxes = {}
@@ -5754,6 +5772,7 @@ if __name__ == "__main__":
                     b.init_rect()
                     if int(d):
                         droppable[k]=([v,None,None],Drop(b,k,t,2),b)
+                        droppable[k][-2].init_rect()
                         g_super.add(droppable[k][1])
                         all_drops.append(droppable[k][1])
                     else:
@@ -5891,7 +5910,7 @@ if __name__ == "__main__":
                             y=r.bottom+button_heigh/2
                             i=0
                             dr = drop[-1][-1]
-                            for description,comment in comments:
+                            for description,comment,*_ in comments:
                                 if i<len(dr):
                                     dr[i].replaceText(description if description else "")
                                     dr[i].refresh(screen_rect.w/4,font)
@@ -5921,6 +5940,14 @@ if __name__ == "__main__":
                         elif "images" == k:
                             ...
 
+                    longer = pygame.transform.scale(longer,(screen_rect.w,y*2))
+
+                    x=0
+                    for information in infos:
+                        infos[information][1] = small_font.render(infos[information][0].format(getattr(self.list_mp3[starting],information)),True,black)
+                        infos[information][2] = infos[information][1].get_rect(x=x,bottom=screen_rect.bottom)
+                        x=infos[information][2].right+button_heigh/2
+                    y = infos[information][2].y
                     width = min(max(
                         font.size(stop)[0],
                         font.size(prev)[0],
@@ -5930,27 +5957,28 @@ if __name__ == "__main__":
                     w = screen_rect.w/4
                     x = w/2
                     prev_b.refresh(width,font.render(prev,True,black),width)
-                    prev_b.init_rect(centerx=x,y=y)
+                    prev_b.init_rect(centerx=x,bottom=y)
                     prev_b.text_rect()
                     x+=w
                     follow_b.refresh(width,font.render(follow,True,black),width)
-                    follow_b.init_rect(centerx=x,y=y)
+                    follow_b.init_rect(centerx=x,bottom=y)
                     follow_b.text_rect()
                     x+=w
                     stop_b.refresh(width,font.render(stop,True,black),width)
-                    stop_b.init_rect(centerx=x,y=y)
+                    stop_b.init_rect(centerx=x,bottom=y)
                     stop_b.text_rect()
                     x+=w
                     refresh_b.refresh(width,font.render(refresh,True,black),width)
-                    refresh_b.init_rect(centerx=x,y=y)
+                    y = refresh_b.init_rect(centerx=x,bottom=y).top
                     refresh_b.text_rect()
 
-                    x=0
-                    for information in infos:
-                        infos[information][1] = small_font.render(infos[information][0].format(getattr(self.list_mp3[starting],information)),True,black)
-                        infos[information][2] = infos[information][1].get_rect(x=x,bottom=screen_rect.bottom)
-                        x=infos[information][2].right+button_heigh/2
-                    
+                    shorter = pygame.transform.scale(shorter,(screen_rect.w,y))
+                    if longer.get_height()>=shorter.get_height():
+                        v_bar.refresh(screen_rect,longer.get_height(),window_h=shorter.get_height())
+                        bar = v_bar
+                    else:
+                        bar = None
+
                     del width,w,x,y,information
 
                     self.utilities.booleans[0] = True
@@ -5981,13 +6009,30 @@ if __name__ == "__main__":
                         else:
                             if little_menu:
                                 little_menu.update(event_list,pos)
-                            for drop in all_drops:
-                                if drop:
-                                    drop.update(event_list,pos)
-                                    break
                             else:
-                                g_super.update(event_list,pos)
-                                g.update(event_list,pos)
+                                for drop in all_drops:
+                                    if drop:
+                                        if bar:
+                                            if shorter.get_rect().collidepoint(pos):
+                                                drop.update(event_list,(pos[0],pos[1]-float(bar)))
+                                            else:
+                                                drop.update(event_list)
+                                        else:
+                                            drop.update(event_list,pos)
+                                        break
+                                else:
+                                    if bar:
+                                        bar.update(event_list,pos)
+                                        if shorter.get_rect().collidepoint(pos):
+                                            g_super.update(event_list,(pos[0],pos[1]-float(bar)))
+                                            g.update(event_list,(pos[0],pos[1]-float(bar)))
+                                        else:
+                                            g_super.update(event_list,None)
+                                            g.update(event_list,None)
+                                    else:
+                                        g_super.update(event_list,pos)
+                                        g.update(event_list,pos)
+                                    g_diff.update(event_list,pos)
 
                         if little_menu:
                             self.utilities.screen.draw(little_menu)
@@ -5995,31 +6040,51 @@ if __name__ == "__main__":
 
                         else:
                             self.utilities.screen.fill(self.utilities.colors['background'])
-                            self.utilities.screen.draw(g)
-                            
-                            self.utilities.screen.draw(*(drop.box for drop in all_drops))
+                            shorter.fill(self.utilities.colors.transparent)
+                            longer.fill(self.utilities.colors.transparent)
+                            g.draw(longer)
+                            drops = None
                             for drop in all_drops:
+                                drop.box.draw(longer)
                                 if drop:
-                                    self.utilities.screen.draw(drop)
+                                    drops = drop
+                            if drops:
+                                drops.draw(longer)
+                            longer.blits((item[1:] for item,*_ in (droppable|boxes).values()))
 
-                            self.utilities.screen.blit(*(item[1:] for item,*_ in (droppable|boxes).values()))
+                            if bar:
+                                shorter.blit(longer,(0,float(bar)))
+                            else:
+                                shorter.blit(longer,(0,0))
+                            self.utilities.screen.draw(g_diff)
+
+                            self.utilities.screen.blit((shorter,(0,0)))
+                            if bar:
+                                self.utilities.screen.draw(bar)
                             self.utilities.screen.blit(*(item[1:] for item in infos.values()))
 
                             pygame.display.update()
 
                     if self.save:
-                        for k,v in droppable.items():
-                            setattr(self.list_mp3[starting],k,str(v[-1]) if str(v[-1]) else None)
-                        for k,(_,v) in boxes.items():
-                            if "num" in k:
-                                setattr(self.list_mp3[starting],k,(str(v[0]) if str(v[0]) else None,str(v[1]) if str(v[1]) else None))
-                            if "date" in k:
-                                setattr(self.list_mp3[starting],k,tuple(str(vv) if str(vv) else None for vv in v))
+                        try:
+                            for k,v in droppable.items():
+                                setattr(self.list_mp3[starting],k,str(v[-1]) if str(v[-1]) else None)
+                            for k,(_,v) in boxes.items():
+                                if "num" in k:
+                                    setattr(self.list_mp3[starting],k,(str(v[0]) if str(v[0]) else None,str(v[1]) if str(v[1]) else None))
+                                elif "date" in k:
+                                    setattr(self.list_mp3[starting],k,tuple(str(vv) if str(vv) else None for vv in v))
+                                elif "comments" == k:
+                                    setattr(self.list_mp3[starting],k,tuple((str(v[-1][i*2+1]),str(v[-1][i*2])) for i in range(int(len(v[-1])/2))))
 
-                        for drop in all_drops:
-                            drop.exit()
-                        self.list_mp3[starting].close(self.utilities)
-                        self.save=False
+
+                            for drop in all_drops:
+                                drop.exit()
+                            self.list_mp3[starting].close(self.utilities)
+                            self.save=False
+                        except Exception as e:
+                            self.utilities.showError(str(e))
+                            self.list_mp3[starting].quit()
                     else:
                         self.list_mp3[starting].quit()
                     
@@ -6233,7 +6298,7 @@ if __name__ == "__main__":
             current_s = [None,None]
             little_surface = [pygame.Surface((2,2),pygame.SRCALPHA),None]
             bigger_surface = pygame.Surface((2,2),pygame.SRCALPHA)
-            bar = v_bar = VerticalBar(4,40,30,15)
+            v_bar = VerticalBar(4,40,30,15)
             g2 = pygame.sprite.Group()
 
             bar = None
@@ -6443,7 +6508,7 @@ if __name__ == "__main__":
                         little_menu.update(event_list,pos)
 
                     else:
-                        if bar is not None:
+                        if bar:
                             bar.update(event_list,pos)
                             if little_surface[1].collidepoint(pos):
                                 g2.update(event_list,(pos[0]-little_surface[1].x,pos[1]-little_surface[1].y-float(bar)))

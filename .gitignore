@@ -2,6 +2,7 @@
 ###################
 *.ini
 *.env
+*.__
 
 # Test stuff #
 ##############
@@ -9,9 +10,7 @@
 __*/
 venv/
 env/
-*.docx
 test*
-roba*
 
 # Packages #
 ############
