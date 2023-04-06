@@ -3626,26 +3626,26 @@ class Drop(pygame.sprite.Sprite):
 
             with open(self.file, "r", encoding=self.utilities.decoder) as file:
                 self.data.extend(file.read().split("\n"))
+                self.data.sort()
+            
+            self._hidder(self.file)
+        else:
+            with open(self.file, "w", encoding=self.utilities.decoder) as file:
+                file.write("")
             
             self._hidder(self.file)
     
     def __write(self, data:str) -> None:
 
-        if self.data:
-            self.__append(data)
-        else:
-            with open(self.file, "w", encoding=self.utilities.decoder) as file:
-                file.write(data)
-        
-        self._hidder(self.file)
         self.data.append(data)
-
-    def __append(self, data:str) -> None:
+        self.data.sort()
 
         self._shower(self.file)
-
-        with open(self.file, "a", encoding=self.utilities.decoder) as file:
-            file.write("\n"+data)
+        
+        with open(self.file, "w", encoding=self.utilities.decoder) as file:
+            file.write("\n".join(data))
+        
+        self._hidder(self.file)
         
     def __find(self) -> None:
         findet = filter(lambda y:self._finder(str(self.box),y),self.data)
@@ -5003,6 +5003,9 @@ if __name__ == "__main__":
         @__check
         def recording_date(self,data:tuple[int,...]) -> None:
             year,*data = data
+            if year is None:
+                self.__mp3.tag.recording_date = None
+                return
             date = str(year)
             mode = ("-{}","-{}","T{}",":{}",":{}")
             for d,m in zip(data,mode):
@@ -5014,7 +5017,7 @@ if __name__ == "__main__":
         @property
         @__check
         def comments(self) -> list[tuple[str,str,bytes]]:
-            if not self.__comments:
+            if self.__mp3__comments is None:
                 self.__mp3__comments = self.__mp3.tag.comments
                 self.__comments = [(i.description,i.text,i.lang) for i in self.__mp3__comments]
             return self.__comments
@@ -5022,8 +5025,10 @@ if __name__ == "__main__":
         @comments.deleter
         @__check
         def comments(self) -> None:
+            self.comments
             for i in self.comments:
                 self.__mp3__comments.remove(i[0],i[2])
+            self.__comments.clear()
 
         @comments.setter
         @__check
@@ -5722,7 +5727,7 @@ if __name__ == "__main__":
 
         def run(self, starting:int=0):
             self.utilities.booleans.add()
-            
+
             try:
                 delete = "Rimuovi"
                 add = "Aggiungi"
@@ -5917,14 +5922,14 @@ if __name__ == "__main__":
                                 else:
                                     dr.append(TextBox(screen_rect.w/4,font,description if description else "",desc,64))
                                     r = dr[-1].init_rect(x=x,y=y)
-                                    dr.append(TextBox(screen_rect.w/3*2,font,comment if comment else "",content,1024))
+                                    dr.append(TextBox(screen_rect.w/3*2-button_heigh,font,comment if comment else "",content,1024))
                                     dr[-1].init_rect(x=r.right+button_heigh,bottom=r.bottom)
                                     i+=2
                                     y=r.bottom+button_heigh/2
                                     g.add(dr[-2:])
                                     all_boxes.extend(dr[-2:])
                             
-                            drop[-1][0].func.args=(drop[-1][0].func.args[0],x,y,button_heigh,screen_rect.w/4,screen_rect.w/3*2,font,drop[-1][0])
+                            drop[-1][0].func.args=(drop[-1][0].func.args[0],x,y,button_heigh,screen_rect.w/4,screen_rect.w/3*2-button_heigh,font,drop[-1][0])
                             
                             for ob in dr[i:]:
                                 ob.kill()
