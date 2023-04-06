@@ -1303,7 +1303,8 @@ class NormalButton(pygame.sprite.Sprite):
     def update(
         self,
         event_list:list[pygame.event.Event],
-        pos:tuple[int,int]=None
+        pos:tuple[int,int],
+        hover:bool=True
         ) -> None:
         """
         It checks every event to update the button 
@@ -1315,10 +1316,7 @@ class NormalButton(pygame.sprite.Sprite):
         """
 
         # It checks the collision of the mouse with the button
-        if pos == None:
-            hover = False
-        else:
-            hover = self.rect.collidepoint(pos)
+        hover &= self.rect.collidepoint(pos)
 
         # It checks every event given from the pc
         for event in event_list:
@@ -2619,7 +2617,8 @@ class TextBox(pygame.sprite.Sprite):
     def update(
         self,
         event_list:list[pygame.event.Event],
-        pos:tuple[int,int]=None,
+        pos:tuple[int,int],
+        hover:bool=True,
         colors: Colors=utilities.colors
         ) -> None:
         """
@@ -2634,7 +2633,7 @@ class TextBox(pygame.sprite.Sprite):
         """
 
         # It checks the collision of the mouse with the button
-        hover = self.rect.collidepoint(pos) if pos else False
+        hover &= self.rect.collidepoint(pos)
 
         # It checks every event given from the pc
         for event in event_list:
@@ -3643,7 +3642,7 @@ class Drop(pygame.sprite.Sprite):
         self._shower(self.file)
         
         with open(self.file, "w", encoding=self.utilities.decoder) as file:
-            file.write("\n".join(data))
+            file.write("\n".join(self.data))
         
         self._hidder(self.file)
         
@@ -3710,7 +3709,8 @@ class Drop(pygame.sprite.Sprite):
     def update(
         self,
         event_list:list[pygame.event.Event],
-        pos:tuple[int,int]
+        pos:tuple[int,int],
+        hover:bool=True
         ) -> None:
         """
         It checks every event to update the button 
@@ -3723,7 +3723,7 @@ class Drop(pygame.sprite.Sprite):
                                                         the image
         """
 
-        hover = self.rect.collidepoint(pos)
+        hover &= self.rect.collidepoint(pos)
         clicked = self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONDOWN,event_list) or self.utilities.booleans.check_g(1,'button',pygame.MOUSEBUTTONUP,event_list)
         self.box.update(event_list,pos)
         if self.active and hover and clicked:
@@ -4218,6 +4218,7 @@ class VerticalBar(pygame.sprite.Sprite):
         self,
         event_list:list[pygame.event.Event],
         pos:tuple[int,int],
+        hover:bool=True,
         colors: Colors=utilities.colors
         ) -> None:
         """
@@ -4232,7 +4233,7 @@ class VerticalBar(pygame.sprite.Sprite):
         """
 
         pos = (pos[0]-self.rect.x, pos[1]-self.rect.y)
-        self._g.update(event_list, pos)
+        self._g.update(event_list, pos, hover)
         
         if self._bar:
             cy = self._bar.get_rect().centery
@@ -4662,6 +4663,7 @@ class HorizontalBar(pygame.sprite.Sprite):
         self,
         event_list:list[pygame.event.Event],
         pos:tuple[int,int],
+        hover:bool=True,
         colors: Colors=utilities.colors
         ) -> None:
         """
@@ -4676,7 +4678,7 @@ class HorizontalBar(pygame.sprite.Sprite):
         """
 
         pos = (pos[0]-self.rect.x, pos[1]-self.rect.y)
-        self._g.update(event_list, pos)
+        self._g.update(event_list, pos, hover)
         
         if self._bar:
             cx = self._bar.get_rect().centerx
@@ -5025,7 +5027,6 @@ if __name__ == "__main__":
         @comments.deleter
         @__check
         def comments(self) -> None:
-            self.comments
             for i in self.comments:
                 self.__mp3__comments.remove(i[0],i[2])
             self.__comments.clear()
@@ -5075,13 +5076,17 @@ if __name__ == "__main__":
 
         def close(self, utilities:Utilities=utilities) -> None:
             if self.__mp3:
-                self.__mp3.tag.save()
+                try:
+                    self.__mp3.tag.save()
+                except Exception as e:
+                    raise e
 
             if utilities.settings['rename']:
                 t = self.newfile(utilities)
                 if t!=self.file:
                     if osexists(osjoin(self.path,t)):
-                        raise NameError(f"{t} already exists")
+                        self.quit()
+                        raise NameError(f"Esiste già:{t}")
                     osrename(osjoin(self.path,self.file),osjoin(self.path,t))
                     self.file = t
 
@@ -5798,7 +5803,7 @@ if __name__ == "__main__":
                         del bb
                     
                     elif "comments" == k:
-                        def __del(list_boxes:list[pygame.sprite.Sprite],starting = starting,all_boxes:list = all_boxes):
+                        def __del(list_boxes:list[pygame.sprite.Sprite],all_boxes:list = all_boxes):
                             
                             del self.list_mp3[starting].comments
                             for _ in range(len(list_boxes)):
@@ -6022,8 +6027,8 @@ if __name__ == "__main__":
                                             g_super.update(event_list,(pos[0],pos[1]-float(bar)))
                                             g.update(event_list,(pos[0],pos[1]-float(bar)))
                                         else:
-                                            g_super.update(event_list,(pos[0],pos[1]-float(bar)))
-                                            g.update(event_list,None)
+                                            g_super.update(event_list,(pos[0],pos[1]-float(bar)),False)
+                                            g.update(event_list,(pos[0],pos[1]-float(bar)),False)
                                     else:
                                         g_super.update(event_list,pos)
                                         g.update(event_list,pos)
@@ -6425,7 +6430,7 @@ if __name__ == "__main__":
                             if little_surface[1].collidepoint(pos):
                                 g2.update(event_list,(pos[0]-little_surface[1].x,pos[1]-little_surface[1].y-float(bar)))
                             else:
-                                g2.update(event_list)
+                                g2.update(event_list,(pos[0]-little_surface[1].x,pos[1]-little_surface[1].y-float(bar)),False)
                         else:
                             g2.update(event_list,(pos[0]-little_surface[1].x,pos[1]-little_surface[1].y))
                         
