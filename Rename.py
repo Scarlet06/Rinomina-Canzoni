@@ -9,11 +9,16 @@ from json import load, dumps
 from sys import exit as sysexit, executable as sysexecutable
 from re import match, findall
 from functools import wraps
+from requests import get as rget
+from io import BytesIO
+
 #to add into hidden imports label in py2exe
 # from string import Formatter
 # from ctypes import windll
-# from io import BytesIO
 # from random import choice,choices
+# from requests import get as rget
+# from io import BytesIO
+# from google_images_search import GoogleImagesSearch
 #---------------------------------------------------------------
 
 class Colors:
@@ -121,7 +126,7 @@ class ENV(dict):
         # and the right as value
         for envy in env.split("\n"):
             envy = envy.split("=")
-            self.__setitem__(envy[0],envy[1].strip("'").strip('"'))
+            self.__setitem__(envy[0].strip(),envy[1].strip().strip("'").strip('"'))
 
     def __missing__(self, __k:str) -> None:
         """
@@ -3912,8 +3917,26 @@ class RectengleText(pygame.sprite.Sprite):
 
         return self.rect
 
-    def update(self,*args,**kwargs) -> None:
-        return
+    def update(
+        self,
+        event_list:list[pygame.event.Event],
+        pos:tuple[int,int],
+        hover:bool=True,
+        decoder:str=utilities.decoder
+        ) -> None:
+        # It checks the collision of the mouse with the button
+        hover &= self.rect.collidepoint(pos)
+
+        # It checks every event given from the pc
+        for event in event_list:
+            # it checks if a mouse button is clicked
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 3 and hover:
+                    try:
+                        pygame.scrap.put(pygame.SCRAP_TEXT,bytes(self.text,decoder))
+                    except:
+                        pass
+                    break
 
     def draw(self, screen:pygame.Surface) -> None:
         """
@@ -4834,8 +4857,8 @@ if __name__ == "__main__":
                 "track_num": "Numero traccia",
                 "disc_num": "Numero disco",
                 "recording_date":"Data",
-                "comments":"Commenti"#,
-                #"images":"Immagini"
+                "comments":"Commenti",
+                "images":"Immagini"
             }
         @staticmethod
         def info():
@@ -4857,8 +4880,8 @@ if __name__ == "__main__":
                 "track_num",
                 "disc_num",
                 "recording_date",
-                "comments"#,
-                #"images":"Immagini"
+                "images",
+                "comments"
                 )
 
         def __init__(self, path:str, file:str) -> None:
@@ -5053,7 +5076,14 @@ if __name__ == "__main__":
             mime_type has to be the type of the file image
             """
             description, img_data, mime_type = data
-            self.__mp3.tag.images.set(3,img_data,bytes(f"image/{mime_type}"), description, None)
+            self.__mp3.tag.images.set(3,img_data,f"image/{mime_type}", description, None)
+
+        @__check
+        def del_images(self, description:str):
+            try:
+                self.__mp3.tag.images.remove(description)
+            except:
+                ...
 
         @property
         @__check
@@ -5551,11 +5581,260 @@ if __name__ == "__main__":
             
             self.utilities.booleans.end()
 
+    class EditPic:
+
+        def __init__(self, utilities:Utilities=utilities) -> None:
+            self.utilities = utilities
+            self.find=[]
+            self.page=0
+            from google_images_search import GoogleImagesSearch
+            self.gis=GoogleImagesSearch(self.utilities.your_dev_api_key,self.utilities.your_project_cx, validate_images=False)
+
+        def del_image(self,song:Song, description:str, images:list):
+            song.del_images(description)
+            for i in range(len(images)):
+                if images[i][0]==description:
+                    images[i][-2].kill()
+                    images[i][-1].kill()
+                    images.pop(i)
+                    break
+            self.utilities.booleans[1]=True
+
+        def add_image(self, song:Song, description:str, i:bytes, img:pygame.Surface, images:list, g:pygame.sprite.Group):
+            song.images = (description,i,"jpeg")
+            images.append((description,i,img,RectengleText(100,"black",50,pygame.font.SysFont("corbel",2),description,"black"),ImageButton(pygame.Surface((1,1)),func=self.del_image,args=(song, description, images))))
+            g.add(images[-1][-2:])
+            self.utilities.booleans[1]=True
+
+        def sel_image(self, song:Song, i:bytes, img:pygame.Surface, images:list, g:pygame.sprite.Group):
+            self.add_image(song,str(self.find[0]),i,img,images,g)
+            for f in self.find[1:]:
+                f[1].kill()
+            self.find[0].kill()
+            self.find.clear()
+
+        def search(self, song:Song, what:TextBox, images:list, g:pygame.sprite.Group, g_findet:pygame.sprite.Group):
+            if not self.find:
+                self.find.append(TextBox(10,pygame.font.SysFont("corbel",2),"","Descrizione"))
+                self.find[0].init_rect()
+                g_findet.add(self.find[0])
+            
+            self.gis.search({'q':str(what), 'num':5})
+            for _ in range(self.page):
+                self.gis.next_page()
+            self.page+=1
+            s = pygame.Surface((1,1))
+            for image in self.gis.results():
+                image = image.get_raw_data()
+                self.find.append(((k:=pygame.image.load(BytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
+                g_findet.add(self.find[-1][1])
+                
+            self.page+=1
+            self.utilities.booleans[1]=True
+
+        def __call__(self, song:Song):
+            self.utilities.booleans.add()
+
+            try:
+
+                f =pygame.font.SysFont("corbel",2)
+                s = pygame.Surface((1,1))
+                short = pygame.Surface((1,1),pygame.SRCALPHA)
+                long=pygame.Surface((1,1),pygame.SRCALPHA)
+                t = (100,"black",50,f)
+                tt = "black"
+                search = "Cerca"
+                back = "Torna indietro"
+                
+                little_menu = LittleMenu(f)
+
+                whole_data = {(k,v):"" if (z:=getattr(song,k)) is None else z for k,v in song.name().items()}
+                rectangles = {k:[None,None,RectengleText(*t,v,tt)] for (_,k),v in whole_data.items() if isinstance(v,str)}
+                g = pygame.sprite.Group(r for *_,r in rectangles.values())
+                g_findet = pygame.sprite.Group()
+
+                v_bar = VerticalBar.scroller(pygame.Rect(0,0,10,100),150)
+                bar =None
+                
+                for (kk,k),v in whole_data.items():
+
+                    if kk=="images":
+                        images = []
+                        for (d,i,l) in v:
+                            if l and not i:
+                                try:
+                                    i = rget(l).content
+                                except:
+                                    song.del_images(d)
+                                    return
+                            try:
+                                img = pygame.image.load(BytesIO(i))
+                            except:
+                                song.del_images(d)
+                                return
+                            
+                            images.append((d,i,img,RectengleText(*t,d,tt),ImageButton(s,func=self.del_image,args=(song, d, images))))
+                            images[-1][-2].init_rect()
+                            g.add(images[-1][-2:])
+                            del d,i,l,img
+                        del kk,k,v
+                        break
+                
+                search_t = TextBox(10,f,"",search)
+                search_t.init_rect()
+                search_b = NormalButton(0,s,func=self.search,args=(song,search_t,images,g, g_findet))
+                back_b = NormalButton(0,s,func=self.utilities.booleans.breaker)
+                g.add(search_b,search_t)
+
+                del f,s,t,tt,whole_data
+
+                self.utilities.booleans[1] = True
+                while self.utilities.booleans[1]:
+                    self.utilities.booleans[1] = False
+
+                    screen_rect = self.utilities.screen.get_rect()
+                    black = self.utilities.colors["black"]
+
+                    button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+                    button_half = int(button_heigh/2)
+                    font = pygame.font.Font(self.utilities.magic,button_heigh)
+                    small_font = pygame.font.Font(self.utilities.magic,button_half)
+
+                    little_menu.refresh(small_font)
+
+                    x = y = button_heigh
+                    for k,r in rectangles.items():
+                        r[0] = font.render(k,True,black)
+                        r[1]=r[0].get_rect(x=x,y=y)
+                        xx=r[1].right+button_half
+                        r[2].refresh(screen_rect.w-(xx+button_heigh),font)
+                        t = r[2].init_rect(x=xx,y=y)
+                        y=max(t.bottom,r[1].bottom)+button_half
+                        del xx,t,k,r
+                    
+                    w = button_heigh*3
+                    w=(w,w)
+                    for img in images:
+                        img[-1].refresh(pygame.transform.smoothscale(img[2],w))
+                        t = img[-1].init_rect(x=x,y=y)
+                        xx = t.right+button_half
+                        img[-2].refresh(screen_rect.w-(xx+button_heigh),font)
+                        img[-2].init_rect(x=xx, centery=t.centery)
+                        y=t.bottom+button_half
+                        del img,t,xx
+
+                    search_b.refresh(0,font.render(search,True,black))
+                    t = search_b.init_rect()
+                    search_t.refresh(screen_rect.w-(t.w+button_half*5),font)
+                    t = search_t.init_rect(x=x,y=y)
+                    search_b.init_rect(x=t.right+button_half,centery=t.centery)
+                    search_b.text_rect()
+                    y=t.bottom+button_half
+
+                    if self.find:
+                        self.find[0].refresh(screen_rect.w-button_heigh*2,font)
+                        y = self.find[0].init_rect(x=x,y=y).bottom+button_half
+                        for img,ib in self.find[1:]:
+                            ib.refresh(pygame.transform.smoothscale(img,w))
+                            y = ib.init_rect(x=x,y=y).bottom+button_half
+
+                    back_b.refresh(0,font.render(back,True,black))
+                    t = back_b.init_rect(centerx=screen_rect.w/2,centery=screen_rect.h-button_heigh)
+                    back_b.text_rect()
+
+                    short = pygame.transform.scale(short,(screen_rect.w,t.top-button_half))
+                    long = pygame.transform.scale(long,(screen_rect.w,y))
+                    if long.get_height()>=short.get_height():
+                        v_bar.refresh(screen_rect,y*2,window_h=short.get_height())
+                        bar = v_bar
+                    else:
+                        bar = None
+
+                    self.utilities.booleans[0] = True
+                    while self.utilities.booleans[0]:
+                        self.utilities.screen.tick()
+
+                        # events for the action
+                        pos = pygame.mouse.get_pos()
+                        event_list = pygame.event.get()
+                        self.utilities.booleans.update_start(event_list,True)
+
+                        if not self.utilities.booleans[0]:
+                            break
+
+                        for event in event_list:
+                            self.utilities.booleans.update_resizing(event)
+                        self.utilities.booleans.update_booleans()
+
+                        if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                            break
+                        
+                        if self.find and self.find[0]:
+                            self.find[0].opened_little_menu()
+                            little_menu.init(*pos, screen_rect, copy=self.find[0].little_copy, cut=self.find[0].little_cut, paste=self.find[0].little_paste)
+                            little_menu.update(event_list,pos)
+                        elif search_t:
+                            search_t.opened_little_menu()
+                            little_menu.init(*pos, screen_rect, copy=search_t.little_copy, cut=search_t.little_cut, paste=search_t.little_paste)
+                            little_menu.update(event_list,pos)
+                        elif little_menu:
+                            little_menu.update(event_list,pos)
+                        else:
+                            back_b.update(event_list,pos)
+                            if bar:
+                                bar.update(event_list,pos)
+                                if short.get_rect().collidepoint(pos):
+                                    g_findet.update(event_list,(pos[0],pos[1]-float(bar)))
+                                    if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                                        break
+                                    g.update(event_list,(pos[0],pos[1]-float(bar)))
+                                else:
+                                    g_findet.update(event_list,pos,False)
+                                    if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                                        break
+                                    g.update(event_list,pos,False)
+                            else:
+                                g_findet.update(event_list,pos)
+                                if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                                    break
+                                g.update(event_list,pos)
+                            
+                        if not self.utilities.booleans[0] or self.utilities.booleans[1]:
+                            break
+
+                        if little_menu:
+                            self.utilities.screen.draw(little_menu)
+                            pygame.display.update(little_menu.get_rect())
+                        
+                        else:
+                            self.utilities.screen.fill(self.utilities.colors['background'])
+                            short.fill(self.utilities.colors.transparent)
+                            long.fill(self.utilities.colors.transparent)
+                            g_findet.draw(long)
+                            g.draw(long)
+                            long.blits(r[:2] for r in rectangles.values())
+                            if bar:
+                                short.blit(long,(0,float(bar)))
+                            else:
+                                short.blit(long,(0,0))
+                            self.utilities.screen.blit((short,(0,0)))
+                            self.utilities.screen.draw(bar,back_b)
+                            
+                            pygame.display.update()
+
+            except Exception as e:
+                self.utilities.showError(str(e))
+
+            self.find.clear()
+            self.page=0
+            self.utilities.booleans.end()
+
     class EditSong:
         def __init__(self, utilities:Utilities=utilities) -> None:
             self.utilities = utilities
             self.list_mp3:list[Song] = []
             self.options = Options(self.utilities)
+            self.edpics = EditPic(utilities)
 
         def __call__(self, wait:bool = False):
             self.utilities.booleans.add()
@@ -5855,6 +6134,7 @@ if __name__ == "__main__":
                 calendar = ("AAAA","MM","DD","HH","MM","SS")
                 desc = "Descrizione"
                 content = "Contenuto"
+                edit = "Gestisci"
 
                 t = pygame.font.SysFont("corbel",3)
                 s = pygame.Surface((1,1))
@@ -5938,7 +6218,9 @@ if __name__ == "__main__":
                         del __del,__add
 
                     elif "images" == k:
-                        ...
+                        b = NormalButton(0,s,func=lambda:self.edpics(self.list_mp3[starting]))
+                        g.add(b)
+                        boxes[k]=([v,None,None],b)
 
                 for k,v in Song.info().items():
                     infos[k] = [v,None,None]
@@ -6052,7 +6334,14 @@ if __name__ == "__main__":
                             del dr[i:], comments
                             
                         elif "images" == k:
-                            ...
+                            b = boxes[k]
+                            b[0][1] = font.render(b[0][0],True,black)
+                            b[0][2] = b[0][1].get_rect(x=x,y=y)
+                            b[1].refresh(0,font.render(edit,True,black))
+                            y=b[1].init_rect(x=b[0][2].right+button_heigh/2,centery=b[0][2].centery).bottom+button_heigh/2
+                            b[1].text_rect()
+
+                            del b
 
                     longer = pygame.transform.scale(longer,(screen_rect.w,y*2))
 
