@@ -1,16 +1,10 @@
 import pygame
-import pygame._sdl2 as sdl2
 import eyed3
-from os import listdir as oslistdir, mkdir as osmkdir,\
-    remove as osremove, chdir as oschdir, rename as osrename, environ
+from os import listdir as oslistdir, chdir as oschdir, rename as osrename, environ
 from os.path import isfile as osisfile, isdir as osisdir, join as osjoin,\
     exists as osexists, abspath as osabspath, dirname as osdirname
-from json import load, dumps
 from sys import exit as sysexit, executable as sysexecutable
 from re import match, findall
-from functools import wraps
-from requests import get as rget
-from io import BytesIO
 
 #to add into hidden imports label in py2exe
 # from string import Formatter
@@ -4894,7 +4888,6 @@ if __name__ == "__main__":
         @staticmethod
         def __check(func):
 
-            @wraps(func)
             def checker(self,*args,**kwargs):
 
                 if not self.__mp3:
@@ -5587,8 +5580,13 @@ if __name__ == "__main__":
             self.utilities = utilities
             self.find=[]
             self.page=0
-            from google_images_search import GoogleImagesSearch
-            self.gis=GoogleImagesSearch(self.utilities.your_dev_api_key,self.utilities.your_project_cx, validate_images=False)
+            try:
+                from google_images_search import GoogleImagesSearch
+                self.gis=GoogleImagesSearch(self.utilities.your_dev_api_key,self.utilities.your_project_cx, validate_images=False)
+            except:
+                self.gis=None
+            from io import BytesIO
+            self.ioBytesIO = BytesIO
 
         def del_image(self,song:Song, description:str, images:list):
             song.del_images(description)
@@ -5614,19 +5612,26 @@ if __name__ == "__main__":
             self.find.clear()
 
         def search(self, song:Song, what:TextBox, images:list, g:pygame.sprite.Group, g_findet:pygame.sprite.Group):
+            if self.gis is None:
+                return
+            try:
+                self.gis.search({'q':str(what), 'num':5})
+            except:
+                return
+            
             if not self.find:
                 self.find.append(TextBox(10,pygame.font.SysFont("corbel",2),"","Descrizione"))
                 self.find[0].init_rect()
                 g_findet.add(self.find[0])
-            
-            self.gis.search({'q':str(what), 'num':5})
+
             for _ in range(self.page):
                 self.gis.next_page()
             self.page+=1
+            
             s = pygame.Surface((1,1))
             for image in self.gis.results():
                 image = image.get_raw_data()
-                self.find.append(((k:=pygame.image.load(BytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
+                self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
                 g_findet.add(self.find[-1][1])
                 
             self.page+=1
@@ -5636,6 +5641,7 @@ if __name__ == "__main__":
             self.utilities.booleans.add()
 
             try:
+                from requests import get as rget
 
                 f =pygame.font.SysFont("corbel",2)
                 s = pygame.Surface((1,1))
@@ -5668,7 +5674,7 @@ if __name__ == "__main__":
                                     song.del_images(d)
                                     return
                             try:
-                                img = pygame.image.load(BytesIO(i))
+                                img = pygame.image.load(self.ioBytesIO(i))
                             except:
                                 song.del_images(d)
                                 return
