@@ -11,6 +11,7 @@ L'obbiettivo di questo programma è rinominare i file .mp3 utilizzando i metadat
   - [Compilazione (?)](#compilazione-)
   - [Sviluppo](#sviluppo)
   - [Materiale utilizzato](#materiale-utilizzato)
+  - [LICENCES](#licences)
 
 ## [Utilizzo](#indice)
 Una volta avviato, sarà possibile scegliere la cartella da cui atingere i file .mp3 da editare. (Il programma attingerà automaticamente unicamente ai file .mp3 presenti nella cartella selezionata).
@@ -35,4 +36,7 @@ Maybe TO DO list:
 ## [Materiale utilizzato](#indice)
 - Per il font dei caratteri speciali, ho deciso d'utilizzare Kazuki Kimura, potete trovare tutti i dettagli a riguardo in nel suo [README.md](Font/README.md) e la sua licenze è [OFL.txt](Font/OFL.txt)
 - Le tre immagini [arr_back.png](Images/arr_back.png), [circle.png](Images/circle.png) e [down.png](Images/down.png) sono tutte state prese dal secondo progetto privato di cui ho cita l'esistenza e sono state disegnate da [Ferrixio](https://github.com/ferrixio). Ci tengo anche ad aggiungere che quello che nel codice è la classe `Start` è un'evoluzione della parte del codice sviluppata dallo stesso Ferrixio, nell steso progetto secondario, ovvero la classe `Fexplorer` (L'explorer proposto da Ferrixio).
-- Le altre due immagini [Rinomina.ico](Images/Rinomina.ico) e [Rinomina.png](Images/Rinomina.png) sono invece state disegnate da me
+- Le altre due immagini [Rinomina.ico](Images/Rinomina.ico) e [Rinomina.png](Images/Rinomina.png) sono invece state disegnate da me.
+
+## LICENCES
+Questo progetto è protetto da Apache License 2.0, eccetto per tutto il materiale non di nostra proprietà intellettuale, per cui ciascuno possiede la propria licenza. Per ulteriori dettagli è possibile visionare [NOTICE](NOTICE.md).
