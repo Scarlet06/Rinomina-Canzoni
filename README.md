@@ -38,5 +38,5 @@ Maybe TO DO list:
 - Le tre immagini [arr_back.png](Images/arr_back.png), [circle.png](Images/circle.png) e [down.png](Images/down.png) sono tutte state prese dal secondo progetto privato di cui ho cita l'esistenza e sono state disegnate da [Ferrixio](https://github.com/ferrixio). Ci tengo anche ad aggiungere che quello che nel codice è la classe `Start` è un'evoluzione della parte del codice sviluppata dallo stesso Ferrixio, nell steso progetto secondario, ovvero la classe `Fexplorer` (L'explorer proposto da Ferrixio).
 - Le altre due immagini [Rinomina.ico](Images/Rinomina.ico) e [Rinomina.png](Images/Rinomina.png) sono invece state disegnate da me.
 
-## LICENCES
+## [LICENCES](LICENSE.md)
 Questo progetto è protetto da Apache License 2.0, eccetto per tutto il materiale non di nostra proprietà intellettuale, per cui ciascuno possiede la propria licenza. Per ulteriori dettagli è possibile visionare [NOTICE](NOTICE.md).
