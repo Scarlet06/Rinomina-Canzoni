@@ -1,6 +1,6 @@
 import pygame
 import eyed3
-from os import listdir as oslistdir, chdir as oschdir, rename as osrename, environ
+from os import listdir as oslistdir, chdir as oschdir, environ
 from os.path import isfile as osisfile, isdir as osisdir, join as osjoin,\
     exists as osexists, abspath as osabspath, dirname as osdirname
 from sys import exit as sysexit, executable as sysexecutable
@@ -4900,6 +4900,7 @@ class HorizontalBar(pygame.sprite.Sprite):
 
 if __name__ == "__main__":
     class Song:
+        ID3_V24 = (2,4,0)
 
         @staticmethod
         def droppable():
@@ -4961,6 +4962,9 @@ if __name__ == "__main__":
 
                 if not self.__mp3:
                     self.__mp3 = eyed3.load(osjoin(self.path,self.file))
+                    if self.__mp3.tag.version<self.ID3_V24:
+                        self.__mp3.tag.version=self.ID3_V24
+
                 return func(self,*args,**kwargs)
             
             return checker
@@ -5167,12 +5171,13 @@ if __name__ == "__main__":
 
             if utilities.settings['rename']:
                 t = self.newfile(utilities)
-                if t!=self.file:
-                    if osexists(osjoin(self.path,t)):
+                k = f"{t}.mp3"
+                if k!=self.file:
+                    if osexists(osjoin(self.path,k)):
                         self.quit()
                         raise NameError(f"Esiste già:{t}")
-                    osrename(osjoin(self.path,self.file),osjoin(self.path,t))
-                    self.file = t
+                    self.__mp3.rename(t)
+                    self.file = k
 
             self.quit()
 
@@ -5220,7 +5225,7 @@ if __name__ == "__main__":
 
         def newfile(self,utilities:Utilities=utilities):
             
-            return  utilities.filename(f"{utilities.settings['rename'].format(**{t:getattr(self.__mp3.tag,t) for t in findall(r'{(.*?)}',utilities.settings['rename'])})}.mp3") 
+            return  utilities.filename(utilities.settings['rename'].format(**{t:getattr(self.__mp3.tag,t) for t in findall(r'{(.*?)}',utilities.settings['rename'])})) 
     
     class ErrorScreen:
         # This class is used to show any kind of error
