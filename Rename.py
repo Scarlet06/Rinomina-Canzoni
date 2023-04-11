@@ -5162,12 +5162,9 @@ if __name__ == "__main__":
         def size_bytes(self) -> str:
             return f"{self.__mp3.info.size_bytes/1024:.2f} Kb"
 
+        @__check
         def close(self, utilities:Utilities=utilities) -> None:
-            if self.__mp3:
-                try:
-                    self.__mp3.tag.save()
-                except Exception as e:
-                    raise e
+            self.__mp3.tag.save()
 
             if utilities.settings['rename']:
                 t = self.newfile(utilities)
