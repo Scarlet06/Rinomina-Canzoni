@@ -14,8 +14,10 @@ L'obbiettivo di questo programma è rinominare i file .mp3 utilizzando i metadat
   - [LICENCES](#licences)
 
 ## [Utilizzo](#indice)
-Una volta avviato, sarà possibile scegliere la cartella da cui atingere i file .mp3 da editare. (Il programma attingerà automaticamente unicamente ai file .mp3 presenti nella cartella selezionata).
-Scegliendo di fare una modifica 
+Una volta avviato, sarà possibile scegliere la cartella da cui attingere i file .mp3 (In automatico verranno selezionati unicamente i file .mp3 presenti nella cartella selezionata) e decidere se si vuole editarli ("Rinomina nuove"), o rinominare tutti i file senza cambiarne i metadati ("Rinomina vecchie").
+Una volta scelta la modalità, verrà mostrata la lista di mp3 presenti nella cartella selezionata e sarà quindi possibile selezionare la canzone da editare e sarà anche possibile cambiare le impostazioni, tra cui la regola di come rinominare i file o di quali metadati salvare in un file esterno per avere una droplist da cui attingere i dati già utilizzati.
+Quando si vogliono editare i metadati di un file mp3, è possibile tra i vari metadati disponibili, editare/rimuovere aggiungere commenti o immagini di copertina, ma anche ascoltare la canzone selezionata.
+Purtroppo ci sono diverse versioni di file .mp3 rispetto a come vengono salvati i metadati. Alcuni di questi file non possono essere editati al momento.
 
 ## [Esecuzione](#indice)
 Prima dell'esecuzione accertatevi di possedere tutti i pacchetti presenti in [requirements.txt](requirements.txt). Nel caso non dovesse essere in possesso delle chiavi per utilizzare Google-Images-Search o non doveste avere il pacchetto, il programma dovrebbe eseguirsi senza vere interruzioni.
@@ -26,8 +28,8 @@ Anche se non penso sia il termine corretto, per creare il file eseguibile è pos
 ## [Sviluppo](#indice)
 Lo sviluppo è iniziato diversi anni addietro e la primissima versione è stata fatta con tkinter. Lavorando poi ad un secondo progetto (ancora privato), mi sono trovato motlo meglio ad utilizzare pygame, ed ora ho copiato da lì diverse strutture che sono ora utilizzate! So che ci stanno ancora diversi spaghetti, ma sono contento di questo risultato. L'"impaginazione" segue ancora l'idea avuta con tkinter, ma credo questa renda un po' meglio.
 
-Maybe TO DO list:
-- un riproduttore musicale per la canzone che si sta editando in quel momento (play, stop, volume up, volume down... (skip +/- 5 sec?))
+Maybe <b>TO DO</b> list:
+- trovare un modo per cambiare la versione dei metadati salvati nel file mp3
 - nel caso si volesse rinominare il file con un nome già presente nella cartella, vorrei:
   - poter scegliere se eliminare uno dei due file
   - riprodurre uno dei due file

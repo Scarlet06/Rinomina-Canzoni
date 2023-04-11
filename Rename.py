@@ -540,6 +540,65 @@ class Screen:
         pygame.quit()
         sysexit(0)
 
+class Music:
+
+    @staticmethod
+    def returnNone(*args,**kwargs):
+        return None
+    
+    @staticmethod
+    def __check(func):
+
+            def checker(self,*args,**kwargs):
+                try:
+                    return func(self,*args,**kwargs)
+                except:
+                    self.breaker()
+            
+            return checker
+
+    @__check
+    def __init__(self) -> None:
+        import pygame._sdl2 as sdl2
+        sdl2.get_audio_device_names(False)
+        pygame.mixer.set_num_channels(1)
+        self.__channel = pygame.mixer.Channel(0)
+        self.__volume=0.1
+        self.__channel.set_volume(self.__volume)
+        self.__works=True
+
+    def __bool__(self)->bool:
+        return self.__works
+
+    def breaker(self):
+        if self.__channel and self.__channel.get_busy():
+            self.__channel.stop()
+        self.__channel = None
+        self.__works = False
+        self.start = self.returnNone
+        self.stop = self.returnNone
+        self.up = self.returnNone
+        self.down = self.returnNone
+    
+    @__check
+    def start(self,sound:pygame.mixer.Sound):
+        self.__channel.play(sound)
+    
+    @__check
+    def stop(self):
+        if self.__channel and self.__channel.get_busy():
+            self.__channel.stop()
+    
+    @__check
+    def up(self):
+        self.__volume=min(self.__volume+0.05,1)
+        self.__channel.set_volume(self.__volume)
+    
+    @__check
+    def down(self):
+        self.__volume=max(self.__volume-0.05,0)
+        self.__channel.set_volume(self.__volume)
+
 class Booleans(list):
     #It will be used to check that every screen format is right & working well
 
@@ -776,7 +835,8 @@ class Utilities:
         'settings',
         'screen',
         'booleans',
-        'showError'
+        'showError',
+        'music'
         )
 
     def __init__(self) -> None:
@@ -790,6 +850,11 @@ class Utilities:
         self.settings = INI(self.decoder)
         if self.settings["night_mode"]:
             self.colors.reverse()
+        self.screen:Screen = None
+        self.booleans:Booleans = None
+        self.showError:ErrorScreen.showError = None
+        self.music:Music= None
+
 
     def init(self)->None:
         pygame.init()
@@ -805,6 +870,7 @@ class Utilities:
         self.screen = Screen(self.settings)
         self.booleans = Booleans(self.screen, self.settings)
         self.showError = ErrorScreen(self).showError
+        self.music = Music()
 
         # Just to allow to ctrl-c/v/x in Textbox
         pygame.scrap.init()
@@ -4885,6 +4951,9 @@ if __name__ == "__main__":
             self.__comments = None
             self.__mp3__comments = None
         
+        def get_Sound(self) -> pygame.mixer.Sound:
+            return pygame.mixer.Sound(osjoin(self.path,self.file))
+
         @staticmethod
         def __check(func):
 
@@ -6155,11 +6224,26 @@ if __name__ == "__main__":
                 shorter = pygame.Surface((1,1),pygame.SRCALPHA)
                 longer = pygame.Surface((1,1),pygame.SRCALPHA)
 
+                player = pygame.Surface((32,32),pygame.SRCALPHA)
+                pygame.draw.rect(player,self.utilities.colors['black'],pygame.Rect(4,4,8,24))
+                pygame.draw.polygon(player,self.utilities.colors['black'],((16,4),(16,27),(27,16),(27,15)))
+                stopper = pygame.Surface((32,32),pygame.SRCALPHA)
+                pygame.draw.rect(stopper,self.utilities.colors['black'],pygame.Rect(8,8,16,16))
+                downer = pygame.Surface((32,32),pygame.SRCALPHA)
+                pygame.draw.rect(downer,self.utilities.colors['black'],pygame.Rect(4,12,24,8))
+                upper = downer.copy()
+                pygame.draw.rect(upper,self.utilities.colors['black'],pygame.Rect(12,4,8,24))
+
+                player_b = ImageButton(s,func =lambda: self.utilities.music.start(self.list_mp3[starting].get_Sound()))
+                stopper_b = ImageButton(s,func = self.utilities.music.stop)
+                upper_b = ImageButton(s,func = self.utilities.music.up)
+                downer_b = ImageButton(s,func = self.utilities.music.down)
+
                 prev_b = NormalButton(0,s,func=self.__prev)
                 follow_b = NormalButton(0,s,func=self.__follow)
                 stop_b = NormalButton(0,s,func=self.__stop)
                 refresh_b = NormalButton(0,s,func=self.__refresh)
-                g_diff.add(prev_b,follow_b,stop_b,refresh_b)
+                g_diff.add(prev_b,follow_b,stop_b,refresh_b,player_b,stopper_b,upper_b,downer_b)
 
                 droppable:dict[str,tuple[Drop|None,TextBox,list[pygame.Surface,pygame.Rect]]] = {}
                 boxes = {}
@@ -6245,7 +6329,7 @@ if __name__ == "__main__":
                     if self.utilities.settings['del_pics']:
                         del self.list_mp3[starting].images
 
-                    button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+                    button_heigh = min(screen_rect.w//25,screen_rect.h//10)//3*2
                     font = pygame.font.Font(self.utilities.magic,button_heigh)
                     small_font = pygame.font.Font(self.utilities.magic,int(button_heigh/2))
 
@@ -6362,8 +6446,8 @@ if __name__ == "__main__":
                         font.size(prev)[0],
                         font.size(follow)[0],
                         font.size(refresh)[0]
-                    ),screen_rect.w/5)
-                    w = screen_rect.w/4
+                    ),screen_rect.w/6)
+                    w = screen_rect.w/5
                     x = w/2
                     prev_b.refresh(width,font.render(prev,True,black),width)
                     prev_b.init_rect(centerx=x,bottom=y)
@@ -6374,12 +6458,22 @@ if __name__ == "__main__":
                     follow_b.text_rect()
                     x+=w
                     stop_b.refresh(width,font.render(stop,True,black),width)
-                    stop_b.init_rect(centerx=x,bottom=y)
+                    t = stop_b.init_rect(centerx=x,bottom=y)
                     stop_b.text_rect()
                     x+=w
                     refresh_b.refresh(width,font.render(refresh,True,black),width)
                     y = refresh_b.init_rect(centerx=x,bottom=y).top
                     refresh_b.text_rect()
+                    x+=w
+                    ww=(width//4,width//4)
+                    stopper_b.refresh(pygame.transform.scale(stopper,ww))
+                    t = stopper_b.init_rect(right=x,centery=t.centery)
+                    player_b.refresh(pygame.transform.scale(player,ww))
+                    player_b.init_rect(right=t.left,centery=t.centery)
+                    downer_b.refresh(pygame.transform.scale(downer,ww))
+                    t = downer_b.init_rect(left=t.right,centery=t.centery)
+                    upper_b.refresh(pygame.transform.scale(upper,ww))
+                    upper_b.init_rect(left=t.right,centery=t.centery)
 
                     shorter = pygame.transform.scale(shorter,(screen_rect.w,y))
                     if longer.get_height()>=shorter.get_height():
@@ -6388,7 +6482,7 @@ if __name__ == "__main__":
                     else:
                         bar = None
 
-                    del width,w,x,y,information
+                    del width,w,x,y,information,t,ww
 
                     self.utilities.booleans[0] = True
                     while self.utilities.booleans[0]:

@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "C:/Users/danie/Documents/Python/github/Rinomina-Canzoni/Rename.py"
+   "value": "C:/Users/danie/Documents/Python/github/Rinomina-Canzoni/py2exe.py"
   },
   {
    "optionDest": "onefile",
@@ -100,6 +100,26 @@
   {
    "optionDest": "hiddenimports",
    "value": "google_images_search"
+  },
+  {
+   "optionDest": "hiddenimports",
+   "value": "pygame"
+  },
+  {
+   "optionDest": "hiddenimports",
+   "value": "eyed3"
+  },
+  {
+   "optionDest": "collect_submodules",
+   "value": "os.path"
+  },
+  {
+   "optionDest": "hiddenimports",
+   "value": "re"
+  },
+  {
+   "optionDest": "datas",
+   "value": "C:/Users/danie/Documents/Python/github/Rinomina-Canzoni/Rename.py;."
   }
  ],
  "nonPyinstallerOptions": {
