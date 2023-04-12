@@ -560,6 +560,7 @@ class Music:
 
     @__check
     def __init__(self) -> None:
+        self.__channel=None
         import pygame._sdl2 as sdl2
         sdl2.get_audio_device_names(False)
         pygame.mixer.set_num_channels(1)
@@ -6365,14 +6366,13 @@ if __name__ == "__main__":
                             f = p = droppable[k][-1]
 
                     elif "num" in k or "date" in k:
-                        for t in boxes[k][-1]:
-                            n=t
+                        for n in boxes[k][-1]:
                             p.set_next(n)
                             n.set_prev(p)
                             p = n
-
                 p.set_next(f)
                 f.set_prev(p)
+
                 del t,s,b,k,v,d,p,n,f
 
                 self.change_song = 0
