@@ -120,6 +120,14 @@
   {
    "optionDest": "datas",
    "value": "C:/Users/danie/Documents/Python/github/Rinomina-Canzoni/Rename.py;."
+  },
+  {
+   "optionDest": "hiddenimports",
+   "value": "subprocess"
+  },
+  {
+   "optionDest": "collect_submodules",
+   "value": "pygame._sdl2"
   }
  ],
  "nonPyinstallerOptions": {
