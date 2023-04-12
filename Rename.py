@@ -6244,8 +6244,8 @@ if __name__ == "__main__":
                 upper = downer.copy()
                 pygame.draw.rect(upper,self.utilities.colors['black'],pygame.Rect(12,4,8,24))
                 folder = pygame.Surface((32,32),pygame.SRCALPHA)
-                pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(4,8),(12,8),(14,10),(24,10),(24,14),(8,14)),1)
-                pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(8,14),(28,14),(20,24)),1)
+                pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(4,8),(12,8),(14,10),(24,10),(24,14),(8,14)),2)
+                pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(8,14),(28,14),(20,24)),2)
 
                 player_b = ImageButton(s,func =lambda: self.utilities.music.start(self.list_mp3[starting].get_Sound()))
                 stopper_b = ImageButton(s,func = self.utilities.music.stop)
