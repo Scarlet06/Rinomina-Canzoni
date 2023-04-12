@@ -13,6 +13,7 @@ from re import match, findall
 # from requests import get as rget
 # from io import BytesIO
 # from google_images_search import GoogleImagesSearch
+# from subprocess import run
 #---------------------------------------------------------------
 
 class Colors:
@@ -5173,7 +5174,7 @@ if __name__ == "__main__":
             if utilities.settings['rename']:
                 t = self.newfile(utilities)
                 k = f"{t}.mp3"
-                if k!=self.file:
+                if k.lower()!=self.file.lower():
                     if osexists(osjoin(self.path,k)):
                         self.quit()
                         raise NameError(f"Esiste già:{t}")
