@@ -2422,7 +2422,9 @@ class TextBox(pygame.sprite.Sprite):
                         #                               "delete" or "canc"
                         #                               button are pressed or
                         #                               not
-        "_changed"
+        "_changed",
+        '_prev',
+        '_next'
         )
 
     button_space = 4    # [int]                     -> total space around the
@@ -2554,7 +2556,8 @@ class TextBox(pygame.sprite.Sprite):
         self._changed = False
         if initial_text:
             self.addText(initial_text)
-            
+        self._next=None
+        self._prev=None
         # These are infos property needed to make the Sprite class work
         # as expecter
         self.image = pygame.Surface((w, h+self.button_space))
@@ -2702,6 +2705,7 @@ class TextBox(pygame.sprite.Sprite):
         hover &= self.rect.collidepoint(pos)
 
         # It checks every event given from the pc
+        remove = None
         for event in event_list:
             
             # it checks if a mouse button is clicked
@@ -2902,7 +2906,6 @@ class TextBox(pygame.sprite.Sprite):
                 #given
                 if any(self._control) and event.text in self._specials:
                     continue
-
                 self.addText(event.text)
 
                 #if it was selected (or electable) it has to be setted as False
@@ -2966,8 +2969,18 @@ class TextBox(pygame.sprite.Sprite):
                     self._LRdc[3]=True
                     self._j=0
 
-                elif event.key == 1073741925 and self._writable: #compose key
+                elif event.key == 1073741925: #compose key
                     self._littlemenu = True
+
+                elif event.key == pygame.K_TAB:
+                    if any(self._shift) and self._prev is not None:
+                        self._prev.keep_alive()
+                        self._writable = self._selected = self._selectable = False
+                        remove = event
+                    elif self._next is not None:
+                        self._next.keep_alive()
+                        self._writable = self._selected = self._selectable = False
+                        remove = event
 
             #if key has being released, it checks if any event has to be thrown
             elif event.type == pygame.KEYUP:
@@ -2995,6 +3008,9 @@ class TextBox(pygame.sprite.Sprite):
                 # DELETE
                 elif event.key == pygame.K_DELETE:
                     self._LRdc[3]=False
+
+        if remove is not None:
+            event_list.remove(remove)
 
         # as reference to SMB3 -> R moovement boosted if both LR are pressed
         # as result dc are being ignored
@@ -3596,6 +3612,11 @@ class TextBox(pygame.sprite.Sprite):
     def keep_alive(self) -> None:
         if not self._writable:
             self._writable = True
+    
+    def set_prev(self,__o) -> None:
+        self._prev = __o
+    def set_next(self,__o) -> None:
+        self._next = __o
 
 class Drop(pygame.sprite.Sprite):
     center = "center"
@@ -6330,7 +6351,29 @@ if __name__ == "__main__":
                 for k,v in Song.info().items():
                     infos[k] = [v,None,None]
 
-                del t,s,b,k,v,d
+                f:TextBox = None
+                p:TextBox = None
+                n:TextBox = None
+                for k in Song.order():
+                    if k in droppable:
+                        if f is not None:
+                            n = droppable[k][-1]
+                            p.set_next(n)
+                            n.set_prev(p)
+                            p = n
+                        else:
+                            f = p = droppable[k][-1]
+
+                    elif "num" in k or "date" in k:
+                        for t in boxes[k][-1]:
+                            n=t
+                            p.set_next(n)
+                            n.set_prev(p)
+                            p = n
+
+                p.set_next(f)
+                f.set_prev(p)
+                del t,s,b,k,v,d,p,n,f
 
                 self.change_song = 0
                 self.save=False
@@ -6532,13 +6575,18 @@ if __name__ == "__main__":
                                 if little_menu:
                                     little_menu.update(event_list,pos)
                                 else:
-                                    for drop in all_drops:
-                                        if drop:
-                                            if bar:
-                                                drop.update(event_list,(pos[0],pos[1]-float(bar)))
+                                    if any(all_drops):
+                                        for drop in all_drops:
+                                            if drop:
+                                                if bar:
+                                                    drop.update(event_list,(pos[0],pos[1]-float(bar)))
+                                                else:
+                                                    drop.update(event_list,pos)
                                             else:
-                                                drop.update(event_list,pos)
-                                            break
+                                                drop.box.update(event_list,pos,False)
+                                        g.update(event_list,pos,False)
+                                        g_diff.update(event_list,pos)
+
                                     else:
                                         if bar:
                                             bar.update(event_list,pos)
@@ -6546,8 +6594,8 @@ if __name__ == "__main__":
                                                 g_super.update(event_list,(pos[0],pos[1]-float(bar)))
                                                 g.update(event_list,(pos[0],pos[1]-float(bar)))
                                             else:
-                                                g_super.update(event_list,(pos[0],pos[1]-float(bar)),False)
-                                                g.update(event_list,(pos[0],pos[1]-float(bar)),False)
+                                                g_super.update(event_list,pos,False)
+                                                g.update(event_list,pos,False)
                                         else:
                                             g_super.update(event_list,pos)
                                             g.update(event_list,pos)
