@@ -148,6 +148,7 @@ class INI(dict):
         "night_mode",
         "drop",
         "rename",
+        "check_None",
         "del_pics",
         "directory"
         ) 
@@ -158,6 +159,7 @@ class INI(dict):
         0,
         '000000',
         '{title} - {artist} - {album}',
+        0,
         0,
         '.'
         )
@@ -174,8 +176,9 @@ class INI(dict):
         ';la risoluzione dello schermo rappresenta le dimensioni w,h della finestra\n'\
         ';il full screen con bordi è attivo se fissato a 1\n;la modalità notte è attiva se fissato a 1\n\n'\
         '[Folder]\ndirectory = {directory}\n;directory è la cartella in cui il programma cerca le informazioni\n\n'\
-        '[Options]\nrename = {rename}\ndrop = {drop}\ndel_pics = {del_pics}\n'\
+        '[Options]\nrename = {rename}\ncheck_None = {check_None}\ndrop = {drop}\ndel_pics = {del_pics}\n'\
         ';rename è la stringa utilizzata per rinominare i file sostituendo le parole contenute tra le parentesi graffe con l\'informazione presente nell\'audio\n'\
+        ';check_None se è 1, allora i file non vengono rinominati nel caso almento un metadato risultasse mancante\n'\
         ';drop è un numero che rappresenta (in forma binaria) quali informazioni verranno salvate in un documento apposito\n'\
         ';del_pics è un\'impostazione che permette l\'eliminazione automatica di tutte le immagini salvate nel file mp3'
 
@@ -2505,7 +2508,7 @@ class TextBox(pygame.sprite.Sprite):
         self._decoder = utilities.decoder
 
         #getting the height of the box
-        ww,h = font.size("G")
+        ww,h = font.size("ML")
 
         # setting all the variables which will be used 
         self._font = font
@@ -2580,7 +2583,7 @@ class TextBox(pygame.sprite.Sprite):
         '''
 
         #getting the height of the box
-        ww,h = font.size("G")
+        ww,h = font.size("LM")
 
         # setting all the variables which will be used 
         if self._empty_surf:
@@ -5219,14 +5222,15 @@ if __name__ == "__main__":
                 "artist":"We Are Magonia",
                 "album_artist":None,
                 "composer":"Annie Lennox, Dave Stewart",
-                "genre":"Remix",
+                "genre":None,
                 "track_num": (1,None),
                 "disc_num":(None,None),
                 "recording_date":"2020-03-10T00:00:00",
                 "comments":[('source','https://www.youtube.com/watch?v=yOwA1yAbHSo')],
                 "images":[],
                 'time_secs':'3:48',
-                'size_bytes':'8980.48 Kb'
+                'size_bytes':'8980.48 Kb',
+                '__file__':'We are Magonia: sweet dreams'
             }
         
         @staticmethod
@@ -5248,6 +5252,18 @@ if __name__ == "__main__":
             }
 
         def newfile(self,utilities:Utilities=utilities):
+            if utilities.settings['check_None']:
+                t = {}
+                for tt in findall(r'{(.*?)}',utilities.settings['rename']):
+                    k = getattr(self.__mp3.tag,tt)
+                    if k is None:
+                        break
+                    t[tt] = k
+                else:
+                    #through the whole loop
+                    return utilities.filename(utilities.settings['rename'].format(**t))
+                #breaked:
+                return self.file.rsplit(".",1)[0]
             
             return  utilities.filename(utilities.settings['rename'].format(**{t:getattr(self.__mp3.tag,t) for t in findall(r'{(.*?)}',utilities.settings['rename'])})) 
     
@@ -5477,10 +5493,12 @@ if __name__ == "__main__":
                 def get_value(self, key, args, kwds):
                     if key in kwds:
                         # if isinstance(kwds[key],tuple)
+                        if kwds[key] is None:
+                            raise FileNotFoundError()
                         return kwds[key]
                     return key
                 
-                def format(self,s:str,*args,**kwargs):
+                def format(self,s:str,args,**kwargs):
                         result = ""
                         while "{" in s:
                             t = s.index("{")
@@ -5489,8 +5507,15 @@ if __name__ == "__main__":
                             if "}" in s:
                                 tt = s.index("}")
                                 try:
-                                    result+=super().format(s[:tt+1],*args,**kwargs)
-                                except:
+                                    result+=super().format(s[:tt+1],args,**kwargs)
+                                except FileNotFoundError:
+                                    if args:
+                                        return kwargs["__file__"]
+                                    else:
+                                        result+="None"
+                                        s = s[tt+1:]
+                                except Exception as e:
+                                    e
                                     s = s[1:]
                                 else:
                                     s = s[tt+1:]
@@ -5500,7 +5525,6 @@ if __name__ == "__main__":
 
                         return result+s.replace("}","")
                         
-
             class ResultFormatter(MissingFormatter):
                 def get_value(self, key, args, kwds):
                     if key in kwds:
@@ -5530,6 +5554,7 @@ if __name__ == "__main__":
             explain_t = "Scrivi come vuoi rinominare ciascun file .mp3. Inserisci tra parentesi graffe {} i metadati del file audio scelti tra: "
             for ar in Song.name():
                 explain_t+=f"'{ar}'; "
+            explain_t = explain_t[:-2]+ "\nSeleziona il box a fianco per non rinominare la canzone nel caso manchino dei metadati"
             explain_t = RectengleText(100,"gray",0,font,explain_t,"black")
 
             def invert():
@@ -5541,6 +5566,11 @@ if __name__ == "__main__":
 
             example = self.utilities.settings["rename"]
             
+            def inv_res():
+                self.utilities.booleans[1]=True
+                self.utilities.settings['check_None'] = int(not self.utilities.settings['check_None'])
+
+            check_t = CheckButton(4,self.utilities.settings["check_None"],func=inv_res)
             t = TextBox(4,font,example,"Lascia vuoto per non rinominare",writable=True,rule = self.utilities.filename)
             t.init_rect(x=0,y=0)
             example_s = [None,None]
@@ -5551,7 +5581,7 @@ if __name__ == "__main__":
 
             little_menu = LittleMenu(font)
             g = pygame.sprite.Group(c[0] for c in check_b)
-            g.add(t,q_b, explain_t,explain_b,explain_d,check_d)
+            g.add(check_t,t,q_b, explain_t,explain_b,explain_d,check_d)
             del s, ar
 
             self.utilities.booleans[1] = True
@@ -5582,10 +5612,12 @@ if __name__ == "__main__":
                 if max(little_font.size(a)[0]+h*2 for a in Song.name().values())>centerx:
                     little_font = pygame.font.SysFont(self.utilities.corbel,button_heigh//6)
                     h = little_font.size("Pq")[1]
-                t.refresh(width,font)
-                r = t.init_rect(centerx=centerx,centery=r.bottom+button_heigh)
+                check_t.refresh(h)
+                r = check_t.init_rect(x = r.x,centery=r.bottom+button_heigh)
+                t.refresh(width-(r.width+h/2),font)
+                r = t.init_rect(x=r.right+h/2,centery=r.centery)
 
-                example_s[0] = little_font.render(missing.format(example,**Song.example()),True,self.utilities.colors["black"])
+                example_s[0] = little_font.render(missing.format(example,self.utilities.settings['check_None'],**Song.example()),True,self.utilities.colors["black"])
                 example_s[1] = example_s[0].get_rect(centerx=centerx, centery=r.bottom+button_heigh)
 
                 explain_b.refresh(width,font)
@@ -5649,7 +5681,7 @@ if __name__ == "__main__":
                     
                     if example != str(t):
                         example = str(t)
-                        example_s[0] = little_font.render(missing.format(example,**Song.example()),True,self.utilities.colors["black"])
+                        example_s[0] = little_font.render(missing.format(example,self.utilities.settings['check_None'],**Song.example()),True,self.utilities.colors["black"])
                         example_s[1] = example_s[0].get_rect(centerx=centerx, bottom=example_s[1].bottom)
                         
                     if little_menu:
@@ -6126,7 +6158,7 @@ if __name__ == "__main__":
                 black = self.utilities.colors["black"]
 
                 error="Errore.txt"
-                explaining = "\n\Convertendo: {} \t-->\t {}"
+                explaining = "\n\Convertendo: {}"
                 breaked = False
 
                 def s():
@@ -6181,12 +6213,12 @@ if __name__ == "__main__":
                             try:
                                 if breaked:
                                     with open(error,"a",encoding=self.utilities.decoder) as e:
-                                        e.write(explaining.format(self.list_mp3[starting].file,self.list_mp3[starting].newfile()))
+                                        e.write(explaining.format(self.list_mp3[starting].file))
                                 else:
                                     breaked=True
                                     with open(error,"w+",encoding=self.utilities.decoder) as e:
                                         e.write("Error while renaming the following files into")
-                                        e.write(explaining.format(self.list_mp3[starting].file,self.list_mp3[starting].newfile(self.utilities)))
+                                        e.write(explaining.format(self.list_mp3[starting].file))
                             except Exception as e:
                                 self.utilities.showError(str(e))
                             
