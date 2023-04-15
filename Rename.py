@@ -5951,10 +5951,11 @@ if __name__ == "__main__":
                             long.blits(r[:2] for r in rectangles.values())
                             if bar:
                                 short.blit(long,(0,float(bar)))
+                                self.utilities.screen.blit((short,(0,0)))
+                                self.utilities.screen.draw(bar,back_b)
                             else:
                                 short.blit(long,(0,0))
-                            self.utilities.screen.blit((short,(0,0)))
-                            self.utilities.screen.draw(bar,back_b)
+                                self.utilities.screen.blit((short,(0,0)))
                             
                             pygame.display.update()
 
