@@ -5786,9 +5786,9 @@ if __name__ == "__main__":
             for image in self.gis.results():
             
                 event_list.extend(pygame.event.get())
-                image = image.get_raw_data()
-                
+
                 try:
+                    image = image.get_raw_data()
                     self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
                 except:
                     continue
