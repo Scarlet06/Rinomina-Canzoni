@@ -5498,7 +5498,7 @@ if __name__ == "__main__":
                     if key in kwds:
                         # if isinstance(kwds[key],tuple)
                         if kwds[key] is None:
-                            raise FileNotFoundError()
+                            raise AttributeError()
                         return kwds[key]
                     return key
                 
@@ -5512,14 +5512,13 @@ if __name__ == "__main__":
                                 tt = s.index("}")
                                 try:
                                     result+=super().format(s[:tt+1],args,**kwargs)
-                                except FileNotFoundError:
+                                except AttributeError:
                                     if args:
                                         return kwargs["__file__"]
                                     else:
                                         result+="None"
                                         s = s[tt+1:]
-                                except Exception as e:
-                                    e
+                                except:
                                     s = s[1:]
                                 else:
                                     s = s[tt+1:]
@@ -5534,6 +5533,9 @@ if __name__ == "__main__":
                     if key in kwds:
                         return f"{{{key}}}"
                     return key
+                
+                def format(self, s: str, **kwargs):
+                    return super().format(s, False, **kwargs)
                 
             missing = MissingFormatter()
             result = ResultFormatter()
@@ -6096,7 +6098,10 @@ if __name__ == "__main__":
 
                 self.list_mp3.clear()
                 self.list_mp3.extend(Song(self.utilities.settings["directory"],o) for o in oslistdir(self.utilities.settings["directory"]) if osisfile(osjoin(self.utilities.settings["directory"],o)) and o.endswith(extension))
-
+                
+                if not self.list_mp3:
+                    raise NameError("Folder has no .mp3 files")
+                
                 title = "Choose a song"
                 start = "Start"
                 options = "Options"
