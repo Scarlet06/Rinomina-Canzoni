@@ -5965,7 +5965,10 @@ if __name__ == "__main__":
                         self.find[0].refresh(screen_rect.w-button_heigh*2,font)
                         y = self.find[0].init_rect(x=x,y=y).bottom+button_half
                         for img,ib in self.find[1:]:
-                            ib.refresh(pygame.transform.smoothscale(img,w))
+                            try:
+                                ib.refresh(pygame.transform.smoothscale(img,w))
+                            except:
+                                ib.refresh(pygame.transform.scale(img,w))
                             y = ib.init_rect(x=x,y=y).bottom+button_half
 
                     back_b.refresh(0,font.render(back,True,black))
