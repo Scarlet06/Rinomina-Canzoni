@@ -5753,13 +5753,19 @@ if __name__ == "__main__":
             wait.start()
             
             if self.gis is None:
+                breaker[0] = True
+                event_list.extend(pygame.event.get())
+                wait.join()
                 return
             
             event_list.extend(pygame.event.get())
 
             try:
-                self.gis.search({'q':str(what), 'num':5})
+                self.gis.search({'q':str(what) if str(what) else " ", 'num':5})
             except:
+                breaker[0] = True
+                event_list.extend(pygame.event.get())
+                wait.join()
                 return
             
             event_list.extend(pygame.event.get())
