@@ -5787,7 +5787,12 @@ if __name__ == "__main__":
             
                 event_list.extend(pygame.event.get())
                 image = image.get_raw_data()
-                self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
+                
+                try:
+                    self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
+                except:
+                    continue
+
                 g_findet.add(self.find[-1][1])
                 
             breaker[0] = True
@@ -5811,7 +5816,7 @@ if __name__ == "__main__":
             from math import sin,cos
             n = 5
             for i in range(1,1+n):
-                pygame.draw.circle(circle,pygame.Color(255,255,255,255//n*i),(r,r),r)
+                pygame.draw.circle(circle,self.utilities.colors["black",255//n*i],(r,r),r)
                 loading.blit(circle,(cos(4/n*i)*width/4+width/2,sin(4/n*i)*width/4+width/2))
 
             i=0
