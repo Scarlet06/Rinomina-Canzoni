@@ -5560,7 +5560,7 @@ if __name__ == "__main__":
             explain_t = "Scrivi come vuoi rinominare ciascun file .mp3. Inserisci tra parentesi graffe {} i metadati del file audio scelti tra: "
             for ar in Song.name():
                 explain_t+=f"'{ar}'; "
-            explain_t = explain_t[:-2]+ "\nSeleziona il box a fianco per non rinominare la canzone nel caso manchino dei metadati"
+            explain_t = explain_t[:-2]+ ". Seleziona il box a fianco per non rinominare la canzone nel caso manchino dei metadati"
             explain_t = RectengleText(100,"gray",0,font,explain_t,"black")
 
             def invert():
