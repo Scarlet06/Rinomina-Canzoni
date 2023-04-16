@@ -14,6 +14,7 @@ from re import match, findall
 # from io import BytesIO
 # from google_images_search import GoogleImagesSearch
 # from subprocess import run
+# from threading import Thread
 #---------------------------------------------------------------
 
 class Colors:
@@ -484,6 +485,9 @@ class Screen:
         '''
         
         return self._screen.get_rect(*args, **kwargs)
+
+    def copy(self):
+        return self._screen.copy()
 
     def draw(self, ob:object, *_others) -> None:
         """
@@ -5742,30 +5746,109 @@ if __name__ == "__main__":
             self.find.clear()
 
         def search(self, song:Song, what:TextBox, images:list, g:pygame.sprite.Group, g_findet:pygame.sprite.Group):
+            from threading import Thread
+            breaker = [False]
+            event_list = list(pygame.event.get())
+            wait = Thread(target=self.waiting,args=(breaker,event_list),daemon=True)
+            wait.start()
+            
             if self.gis is None:
                 return
+            
+            event_list.extend(pygame.event.get())
+
             try:
                 self.gis.search({'q':str(what), 'num':5})
             except:
                 return
             
+            event_list.extend(pygame.event.get())
+            
             if not self.find:
                 self.find.append(TextBox(10,pygame.font.SysFont("corbel",2),"","Descrizione"))
                 self.find[0].init_rect()
                 g_findet.add(self.find[0])
+            
+            event_list.extend(pygame.event.get())
 
             for _ in range(self.page):
                 self.gis.next_page()
+                event_list.extend(pygame.event.get())
             self.page+=1
             
             s = pygame.Surface((1,1))
             for image in self.gis.results():
+            
+                event_list.extend(pygame.event.get())
                 image = image.get_raw_data()
                 self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
                 g_findet.add(self.find[-1][1])
                 
+            breaker[0] = True
+            event_list.extend(pygame.event.get())
+            wait.join()
             self.page+=1
             self.utilities.booleans[1]=True
+
+        def waiting(self,breaker:list[bool], event_list = list[pygame.event.Event]):
+            self.utilities.booleans.add()
+
+            copied = self.utilities.screen.copy()
+            transformed= [None,(0,0)]
+
+            width = 64
+            loading = pygame.Surface((width,width),pygame.SRCALPHA)
+            loading_r:pygame.Rect = None
+            r = width/16
+            circle = pygame.Surface((r*2,r*2),pygame.SRCALPHA)
+
+            from math import sin,cos
+            n = 5
+            for i in range(1,1+n):
+                pygame.draw.circle(circle,pygame.Color(255,255,255,255//n*i),(r,r),r)
+                loading.blit(circle,(cos(4/n*i)*width/4+width/2,sin(4/n*i)*width/4+width/2))
+
+            i=0
+            value = False
+
+            self.utilities.booleans[1] = True
+            while self.utilities.booleans[1]:
+                self.utilities.booleans[1] = False
+
+                screen_rect = self.utilities.screen.get_rect()
+                transformed[0] = pygame.transform.scale(copied,screen_rect.size)
+                loading_r = loading.get_rect(bottomright = screen_rect.bottomright)
+
+                self.utilities.booleans[0] = True
+                while self.utilities.booleans[0] and not breaker[0]:
+                        self.utilities.screen.tick()
+
+                        # events for the action
+                        self.utilities.booleans.update_start(event_list,True)
+
+                        if not self.utilities.booleans[0] or breaker[0]:
+                            break
+
+                        for event in event_list:
+                            self.utilities.booleans.update_resizing(event)
+                        self.utilities.booleans.update_booleans()
+                        event_list.clear()
+
+                        if not self.utilities.booleans[0] or self.utilities.booleans[1] or breaker[0]:
+                            break
+
+                        self.utilities.screen.blit(transformed)
+                        t = pygame.transform.rotate(loading,-i**1.4)
+                        self.utilities.screen.blit((t,t.get_rect(center = loading_r.center)))
+
+                        i+=1-6*value
+                        i%=500
+                        if not i:
+                            value = not value
+
+                        pygame.display.update()
+
+            self.utilities.booleans.end()
 
         def __call__(self, song:Song):
             self.utilities.booleans.add()
