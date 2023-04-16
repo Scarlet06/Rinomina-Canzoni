@@ -5746,10 +5746,25 @@ if __name__ == "__main__":
             self.find.clear()
 
         def search(self, song:Song, what:TextBox, images:list, g:pygame.sprite.Group, g_findet:pygame.sprite.Group):
+            try:
+                if osisfile(osabspath(str(what))):
+                    image = pygame.image.load(osabspath(str(what)))
+                    bts = open(osabspath(str(what)),"rb").read()
+                    if not self.find:
+                        self.find.append(TextBox(10,pygame.font.SysFont("corbel",2),"","Descrizione"))
+                        self.find[0].init_rect()
+                        g_findet.add(self.find[0])
+                    self.find.append((image,ImageButton(pygame.Surface((1,1)),func = self.sel_image, args=(song,bts,image,images,g))))
+                    g_findet.add(self.find[-1][1])
+                    self.utilities.booleans[1]=True
+                    return
+            except:
+                ...
+
             from threading import Thread
             breaker = [False]
             event_list = list(pygame.event.get())
-            wait = Thread(target=self.waiting,args=(breaker,event_list),daemon=True)
+            wait = Thread(target=self.waiting, args=(breaker,event_list), daemon=True)
             wait.start()
             
             if self.gis is None:
