@@ -3371,7 +3371,8 @@ class TextBox(pygame.sprite.Sprite):
             #adds every accepted char (until the limit is reached)
             for nt in new_text:
                 if len(self._text)<self._max_char:
-                    self._insert(nt)
+                    if self._font.size(nt)[0]:
+                        self._insert(nt)
         self._i = 0
 
     def _pop(self, left:bool=True) -> None:
@@ -5716,11 +5717,16 @@ if __name__ == "__main__":
             self.utilities = utilities
             self.find=[]
             self.page=0
-            try:
-                from google_images_search import GoogleImagesSearch
-                self.gis=GoogleImagesSearch(self.utilities.your_dev_api_key,self.utilities.your_project_cx, validate_images=False)
-            except:
-                self.gis=None
+            if self.utilities.your_dev_api_key and self.utilities.your_project_cx:
+
+                try:
+                    from google_images_search import GoogleImagesSearch
+                    self.gis=GoogleImagesSearch(self.utilities.your_dev_api_key,self.utilities.your_project_cx, validate_images=False)
+                except:
+                    self.gis=None
+            else:
+                self.gis = None
+
             from io import BytesIO
             self.ioBytesIO = BytesIO
 
@@ -5762,6 +5768,10 @@ if __name__ == "__main__":
                     return
             except:
                 ...
+            
+            if self.gis is None:
+                self.utilities.showError("No given API keys aviable")
+                return
 
             from threading import Thread
             breaker = [False]
@@ -5769,20 +5779,15 @@ if __name__ == "__main__":
             wait = Thread(target=self.waiting, args=(breaker,event_list), daemon=True)
             wait.start()
             
-            if self.gis is None:
-                breaker[0] = True
-                event_list.extend(pygame.event.get())
-                wait.join()
-                return
-            
             event_list.extend(pygame.event.get())
 
             try:
                 self.gis.search({'q':str(what) if str(what) else " ", 'num':5})
-            except:
+            except Exception as e:
                 breaker[0] = True
                 event_list.extend(pygame.event.get())
                 wait.join()
+                self.utilities.showError(str(e))
                 return
             
             event_list.extend(pygame.event.get())
