@@ -3421,6 +3421,7 @@ class TextBox(pygame.sprite.Sprite):
         #to remove manychars
         if self._selected:
             self._pops()
+            self._selected=False
         
         #to remove only one char
         elif self._k>0:
