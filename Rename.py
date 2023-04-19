@@ -3507,14 +3507,14 @@ class TextBox(pygame.sprite.Sprite):
 
             if self._k<self._kk:
                 pygame.scrap.put(
-                    pygame.SCRAP_TEXT,
-                    bytes(self._text[self._k:self._kk], self._decoder)
+                    "text/plain;charset=utf-16",
+                    bytes(self._text[self._k:self._kk], 'utf-16')
                     )
 
             else:
                 pygame.scrap.put(
-                    pygame.SCRAP_TEXT,
-                    bytes(self._text[self._kk:self._k], self._decoder)
+                    "text/plain;charset=utf-16",
+                    bytes(self._text[self._kk:self._k], 'utf-16')
                     )
 
             #it un-selects the text
@@ -3523,7 +3523,7 @@ class TextBox(pygame.sprite.Sprite):
         # if text is not selected but there is text written in
         # it 'copies' the whole text
         elif self._text:
-            pygame.scrap.put(pygame.SCRAP_TEXT,bytes(self._text,self._decoder))
+            pygame.scrap.put("text/plain;charset=utf-16",bytes(self._text,'utf-16'))
 
     def little_copy(self) -> None:
         '''
@@ -3546,14 +3546,14 @@ class TextBox(pygame.sprite.Sprite):
 
             if self._k<self._kk:
                 pygame.scrap.put(
-                    pygame.SCRAP_TEXT,
-                    bytes(self._text[self._k:self._kk],self._decoder)
+                    "text/plain;charset=utf-16",
+                    bytes(self._text[self._k:self._kk],'utf-16')
                     )
 
             else:
                 pygame.scrap.put(
-                    pygame.SCRAP_TEXT,
-                    bytes(self._text[self._kk:self._k],self._decoder)
+                    "text/plain;charset=utf-16",
+                    bytes(self._text[self._kk:self._k],'utf-16')
                     )
 
             #it deletes the selected text
@@ -3562,7 +3562,7 @@ class TextBox(pygame.sprite.Sprite):
         # if text is not selected but there is text written in
         # it 'copies' the whole text and then it deletes it
         elif self._text:
-            pygame.scrap.put(pygame.SCRAP_TEXT,bytes(self._text,self._decoder))
+            pygame.scrap.put("text/plain;charset=utf-16",bytes(self._text,'utf-16'))
             self.removeAll()
 
     def little_cut(self) -> None:
@@ -3581,13 +3581,19 @@ class TextBox(pygame.sprite.Sprite):
         '''
 
         #it get the text to 'paste'
-        t=pygame.scrap.get(pygame.SCRAP_TEXT)
-
+        t=pygame.scrap.get("text/plain;charset=utf-8")
+        if not t:
+            t=pygame.scrap.get("text/plain;charset=utf-16")
+        
         #it tries to add the pasted text, if it can't, does nothing but
         #un-seletting the text
         if not t is None:
             try:
-                self.addText(str(t.replace(b"\x00", b""), self._decoder))
+                t = str(t, "utf-16")
+            except:
+                t = str(t+b'\x00', "utf-16")
+            try:
+                self.addText(t)
             except:
                 return
         
