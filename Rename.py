@@ -1,6 +1,6 @@
 import pygame
-import eyed3
-from os import listdir as oslistdir, chdir as oschdir, getenv as osgetenv, environ
+from eyed3 import load as eyeload
+from os import listdir as oslistdir, chdir as oschdir, getenv as osgetenv, system as ossystem, environ
 from os.path import isfile as osisfile, isdir as osisdir, join as osjoin,\
     exists as osexists, abspath as osabspath, dirname as osdirname
 from sys import exit as sysexit, executable as sysexecutable
@@ -10,10 +10,10 @@ from re import match, findall
 # from string import Formatter
 # from ctypes import windll
 # from random import choice,choices
+# from pyperclip import copy,paste
 # from requests import get as rget
 # from io import BytesIO
 # from google_images_search import GoogleImagesSearch
-# from subprocess import run
 # from threading import Thread
 #---------------------------------------------------------------
 
@@ -863,7 +863,6 @@ class Utilities:
         self.booleans:Booleans = None
         self.showError:ErrorScreen.showError = None
         self.music:Music= None
-
 
     def init(self)->None:
         pygame.init()
@@ -2454,6 +2453,11 @@ class TextBox(pygame.sprite.Sprite):
                         #                               cicle through
     _wait_c2 = 25       # [int]                     -> int over which 'counter'
                         #                               cicle through
+    
+    from pyperclip import copy,paste
+    __copy=staticmethod(copy)
+    __paste=staticmethod(paste)
+    del copy,paste
 
     def __init__(
         self,
@@ -3507,16 +3511,10 @@ class TextBox(pygame.sprite.Sprite):
         if self._selected:
 
             if self._k<self._kk:
-                pygame.scrap.put(
-                    "text/plain;charset=utf-16",
-                    bytes(self._text[self._k:self._kk], 'utf-16')
-                    )
+                self.__copy(self._text[self._k:self._kk])
 
             else:
-                pygame.scrap.put(
-                    "text/plain;charset=utf-16",
-                    bytes(self._text[self._kk:self._k], 'utf-16')
-                    )
+                self.__copy(self._text[self._kk:self._k])
 
             #it un-selects the text
             self._selected = False
@@ -3524,7 +3522,7 @@ class TextBox(pygame.sprite.Sprite):
         # if text is not selected but there is text written in
         # it 'copies' the whole text
         elif self._text:
-            pygame.scrap.put("text/plain;charset=utf-16",bytes(self._text,'utf-16'))
+            self.__copy(self._text)
 
     def little_copy(self) -> None:
         '''
@@ -3546,16 +3544,10 @@ class TextBox(pygame.sprite.Sprite):
         if self._selected:
 
             if self._k<self._kk:
-                pygame.scrap.put(
-                    "text/plain;charset=utf-16",
-                    bytes(self._text[self._k:self._kk],'utf-16')
-                    )
+                self.__copy(self._text[self._k:self._kk])
 
             else:
-                pygame.scrap.put(
-                    "text/plain;charset=utf-16",
-                    bytes(self._text[self._kk:self._k],'utf-16')
-                    )
+                self.__copy(self._text[self._kk:self._k])
 
             #it deletes the selected text
             self.removeTextR()
@@ -3563,7 +3555,7 @@ class TextBox(pygame.sprite.Sprite):
         # if text is not selected but there is text written in
         # it 'copies' the whole text and then it deletes it
         elif self._text:
-            pygame.scrap.put("text/plain;charset=utf-16",bytes(self._text,'utf-16'))
+            self.__copy(self._text)
             self.removeAll()
 
     def little_cut(self) -> None:
@@ -3582,21 +3574,7 @@ class TextBox(pygame.sprite.Sprite):
         '''
 
         #it get the text to 'paste'
-        t=pygame.scrap.get("text/plain;charset=utf-8")
-        if not t:
-            t=pygame.scrap.get("text/plain;charset=utf-16")
-        
-        #it tries to add the pasted text, if it can't, does nothing but
-        #un-seletting the text
-        if not t is None:
-            try:
-                t = str(t, "utf-16")
-            except:
-                t = str(t+b'\x00', "utf-16")
-            try:
-                self.addText(t)
-            except:
-                return
+        self.addText(self.__paste())
         
         self._selected = False
 
@@ -4986,7 +4964,7 @@ if __name__ == "__main__":
         def __init__(self, path:str, file:str) -> None:
             self.path = path
             self.file = file
-            self.__mp3:eyed3.AudioFile = None
+            self.__mp3 = None
             self.__comments = None
             self.__mp3__comments = None
         
@@ -4999,7 +4977,7 @@ if __name__ == "__main__":
             def checker(self,*args,**kwargs):
 
                 if not self.__mp3:
-                    self.__mp3 = eyed3.load(osjoin(self.path,self.file))
+                    self.__mp3 = eyeload(osjoin(self.path,self.file))
                     if self.__mp3.tag.version<self.ID3_V24:
                         self.__mp3.tag.version=self.ID3_V24
 
@@ -6098,8 +6076,7 @@ if __name__ == "__main__":
             self.list_mp3:list[Song] = []
             self.options = Options(self.utilities)
             self.edpics = EditPic(utilities)
-            from subprocess import run
-            self.explorer = lambda x: run((osjoin(osgetenv('WINDIR'), 'explorer.exe'), '/select,', x))
+            self.explorer = lambda x: ossystem(f'explorer.exe /select, "{x}"')
 
         def __call__(self, wait:bool = False):
             self.utilities.booleans.add()
