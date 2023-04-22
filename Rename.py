@@ -22,8 +22,8 @@ class Colors:
     # the night_mode
 
     __slots__ = (
-        '_colors',      #dict[str:pygame.Color] -> has the colors
-        '_colors_dark'  #dict[str:pygame.Color] -> has the colors for dark mode
+        '__colors',      #dict[str:pygame.Color] -> has the colors
+        '__colors_dark'  #dict[str:pygame.Color] -> has the colors for dark mode
         )
 
     white = pygame.Color(255, 255, 255)         # that's pure white
@@ -33,7 +33,7 @@ class Colors:
     alphed = pygame.Color(0,0,0,5)
 
     def __init__(self) -> None:
-        self._colors = {
+        self.__colors = {
             'background': pygame.Color(239, 239, 239),
             'white': pygame.Color(255, 255, 255),
             'gray': pygame.Color(196, 196, 196),
@@ -50,7 +50,7 @@ class Colors:
             'red': pygame.Color(230, 56, 56)
             }
 
-        self._colors_dark = {
+        self.__colors_dark = {
             'background': pygame.Color(37,29,58),
             'white': pygame.Color(0, 0, 0),
             'gray': pygame.Color(70,70,70),
@@ -79,23 +79,20 @@ class Colors:
         """
 
         if type(__color) is tuple:
-            return self._colors[__color[0]]-pygame.Color(0,0,0,255-__color[1])
-        return self._colors[__color]
+            return self.__colors[__color[0]]-pygame.Color(0,0,0,255-__color[1])
+        return self.__colors[__color]
         
     def reverse(self) -> None:
         """
         reverse the colors for the night theme
         """
 
-        self._colors, self._colors_dark = self._colors_dark, self._colors
+        self.__colors, self.__colors_dark = self.__colors_dark, self.__colors
 
 class ENV(dict):
     #this object simulates the dotenv package to work with .env file
     
     __slots__ = ()      # []    -> there is no need to use more attributes
-    _name = ".env"      # [str] -> is the name of the file
-                        # [str] -> this is the contained text of the .env
-    _txt='decode="utf-8"\nyour_dev_api_key =\nyour_project_cx ='
 
     def __init__(self) -> None:
         """
@@ -104,25 +101,23 @@ class ENV(dict):
         """
 
         # it initialize the dict object
-        super().__init__({})
-
-        if osexists(self._name):
+        
+        _name = ".env"
+        if osexists(_name):
             #it reads the file
-            with open(self._name,"r") as env:
+            with open(_name,"r") as env:
                 env=env.read()
         else:
             #it creates the file
-            with open(self._name,"w") as newenv:
-                env = self._txt
+            with open(_name,"w") as newenv:
+                env = 'decode = "utf-8"\nyour_dev_api_key =\nyour_project_cx ='
                 newenv.write(env)
             from ctypes import windll
-            windll.kernel32.SetFileAttributesW(self._name, 0x02)
+            windll.kernel32.SetFileAttributesW(_name, 0x02)
 
         # for each row it splits between "=" and uses the left as key
         # and the right as value
-        for envy in env.split("\n"):
-            envy = envy.split("=")
-            self.__setitem__(envy[0].strip(),envy[1].strip().strip("'").strip('"'))
+        super().__init__(map(lambda x: x.strip().strip('"'),e.split("=")) for e in env.split("\n"))
 
     def __missing__(self, __k:str) -> None:
         """
@@ -140,9 +135,9 @@ class INI(dict):
     
     __slots__ = ("_decoder")    # [str]                 -> decoding/encoding
                                 #                           text special char
-    _name = "Options.ini"      # [str]                 -> this is the name of
+    __name = "Options.ini"      # [str]                 -> this is the name of
                                 #                           the file
-    _key = (                    # [tuple[str]]          -> tuple of key for
+    __key = (                   # [tuple[str]]          -> tuple of key for
         "pos",                  #                           the dict
         "resolution",
         "full_screen",
@@ -153,7 +148,7 @@ class INI(dict):
         "del_pics",
         "directory"
         ) 
-    _val = (                    # [tuple[str|float]]    -> tuple of value for
+    __val = (                   # [tuple[str|float]]    -> tuple of value for
         '30,45',                #                           the dict with the
         "858,480",              #                           corresponding key
         0,                      #                           in the same index
@@ -164,25 +159,9 @@ class INI(dict):
         0,
         '.'
         )
-    _dim = '{},{}'              # [str]                 -> place to put pos and
+    __dim = '{},{}'             # [str]                 -> place to put pos and
                                 #                           ersolution in the 
                                 #                           correct place
-                                                            
-                                # [str]                -> is the looking-like
-                                #                          .ini file for the 
-                                #                          settings
-    _settings = '[Screen]\npos = {pos}\nresolution = {resolution}\n'\
-        'full_screen = {full_screen}\nnight_mode = {night_mode}\n'\
-        ';la posizione dello schermo rappresenta le coordinate x,y dell\'angolo in alto a destra della finestra sullo schermo\n'\
-        ';la risoluzione dello schermo rappresenta le dimensioni w,h della finestra\n'\
-        ';il full screen con bordi è attivo se fissato a 1\n;la modalità notte è attiva se fissato a 1\n\n'\
-        '[Folder]\ndirectory = {directory}\n;directory è la cartella in cui il programma cerca le informazioni\n\n'\
-        '[Options]\nrename = {rename}\ncheck_None = {check_None}\ndrop = {drop}\ndel_pics = {del_pics}\n'\
-        ';rename è la stringa utilizzata per rinominare i file sostituendo le parole contenute tra le parentesi graffe con l\'informazione presente nell\'audio\n'\
-        ';check_None se è 1, allora i file non vengono rinominati nel caso almento un metadato risultasse mancante\n'\
-        ';drop è un numero che rappresenta (in forma binaria) quali informazioni verranno salvate in un documento apposito\n'\
-        ';del_pics è un\'impostazione che permette l\'eliminazione automatica di tutte le immagini salvate nel file mp3'
-
     def __init__(self, decoder:str) -> None:
         """
         It creates the dict with the program settings. 
@@ -197,10 +176,10 @@ class INI(dict):
 
         # it tries to read the file, if it can, it tries to get all the 
         # informations; else it resets all the settings
-        if osexists(self._name):
+        if osexists(self.__name):
             try:
                 #reading the file
-                with open(self._name, "r", encoding=decoder) as ini:
+                with open(self.__name, "r", encoding=decoder) as ini:
                     ini=ini.read()
 
                 # if a value is broken, it will be correctly replaced and tt
@@ -208,62 +187,62 @@ class INI(dict):
                 # be overwritten in the file
                 tt=False
                 t=dict(
-                    map(lambda w:str.strip(w," "), iniy.split("="))
-                    for iniy in ini.split("\n")
-                    if "=" in iniy and not iniy.startswith(";")
+                    map(lambda w:w.strip(), i.split("="))
+                    for i in ini.split("\n")
+                    if "=" in i and not i.startswith(";")
                 )
 
-                for i in range(-1,len(self._key)-1):
+                for i in range(-1,len(self.__key)-1):
                     
-                    if self._key[i] in t:
+                    if self.__key[i] in t:
 
                         # if key is directory, its value (path) has to exists
                         if i==-1:
-                            if osexists(osabspath(t[self._key[i]])):
-                                t[self._key[i]] = osabspath(t[self._key[i]])
+                            if osexists(osabspath(t[self.__key[i]])):
+                                t[self.__key[i]] = osabspath(t[self.__key[i]])
                             else:
-                                t[self._key[i]] = osabspath(self._val[i])
+                                t[self.__key[i]] = osabspath(self.__val[i])
                                 tt=True
                             continue
 
                         # if key is pos / resolution, its value has to be "x,y"
                         elif i<2:
-                            k=match(r"-?\d+[,]-?\d+", t[self._key[i]])
+                            k=match(r"-?\d+[,]-?\d+", t[self.__key[i]])
                             if not k is None:
-                                if t[self._key[i]] != k[0]:
-                                    t[self._key[i]] = self._val[i]
+                                if t[self.__key[i]] != k[0]:
+                                    t[self.__key[i]] = self.__val[i]
                                     tt=True
                             else:
-                                t[self._key[i]] = self._val[i]
+                                t[self.__key[i]] = self.__val[i]
                                 tt=True
                             continue
 
                         # if the value has to be an int, so it will be checked
-                        elif type(self._val[i]) is int:
-                            if t[self._key[i]].isnumeric():
-                                t[self._key[i]] = int(t[self._key[i]])
+                        elif type(self.__val[i]) is int:
+                            if t[self.__key[i]].isnumeric():
+                                t[self.__key[i]] = int(t[self.__key[i]])
                             else:
-                                t[self._key[i]] = self._val[i]
+                                t[self.__key[i]] = self.__val[i]
                                 tt=True
                             continue
 
                         # if the value has to be a float, so it will be checked
-                        elif type(self._val[i]) is float:
-                            k=match(r"(\d*[.])?\d+", t[self._key[i]])
+                        elif type(self.__val[i]) is float:
+                            k=match(r"(\d*[.])?\d+", t[self.__key[i]])
                             if not k is None:
-                                if t[self._key[i]] == k[0]:
-                                    t[self._key[i]] = float(t[self._key[i]])
+                                if t[self.__key[i]] == k[0]:
+                                    t[self.__key[i]] = float(t[self.__key[i]])
                                 else:
-                                    t[self._key[i]] = self._val[i]
+                                    t[self.__key[i]] = self.__val[i]
                                     tt=True
                             else:
-                                t[self._key[i]] = self._val[i]
+                                t[self.__key[i]] = self.__val[i]
                                 tt=True
                             continue
 
                     else:
                         #if any key is missing the original value is choosed
-                        t[self._key[i]] = self._val[i]
+                        t[self.__key[i]] = self.__val[i]
                         tt=True
 
                 # it initializes the dict
@@ -271,35 +250,48 @@ class INI(dict):
 
                 #if tt becomed True, it overwrites the file
                 if tt:
-                    self._write()
+                    self.__write()
 
             except:
                 #if there is any kind of error it resets any setting
-                self._correct()
+                self.__correct()
 
         else:
             #if the file doesn't exists it sets the base settigns
-            self._correct()
+            self.__correct()
 
-    def _write(self) -> None:
+    def __write(self) -> None:
         """
         It writes into the SettingsOne.ini file the dict in the .ini format
-        through _settings
         """
-        
-        with open(self._name,"w",encoding=self._decoder) as ini:
-            ini.write(self._settings.format(**self))
+                                                            
+        # is the looking-like .ini file for the settings
+        __settings = '[Screen]\npos = {pos}\nresolution = {resolution}\n'\
+            'full_screen = {full_screen}\nnight_mode = {night_mode}\n'\
+            ';la posizione dello schermo rappresenta le coordinate x,y dell\'angolo in alto a destra della finestra sullo schermo\n'\
+            ';la risoluzione dello schermo rappresenta le dimensioni w,h della finestra\n'\
+            ';il full screen con bordi è attivo se fissato a 1\n;la modalità notte è attiva se fissato a 1\n\n'\
+            '[Folder]\ndirectory = {directory}\n;directory è la cartella in cui il programma cerca le informazioni\n\n'\
+            '[Options]\nrename = {rename}\ncheck_None = {check_None}\ndrop = {drop}\ndel_pics = {del_pics}\n'\
+            ';rename è la stringa utilizzata per rinominare i file sostituendo le parole contenute tra le parentesi graffe con l\'informazione presente nell\'audio\n'\
+            ';check_None se è 1, allora i file non vengono rinominati nel caso almento un metadato risultasse mancante\n'\
+            ';drop è un numero che rappresenta (in forma binaria) quali informazioni verranno salvate in un documento apposito\n'\
+            ';del_pics è un\'impostazione che permette l\'eliminazione automatica di tutte le immagini salvate nel file mp3'
 
-    def _correct(self) -> None:
+        
+        with open(self.__name,"w",encoding=self._decoder) as ini:
+            ini.write(__settings.format(**self))
+
+    def __correct(self) -> None:
         """
-        It pairs _key with _value and initializes the dict with it.
+        It pairs __key with __val and initializes the dict with it.
         This way there will be a brand new full working .ini file
         """
         
-        super().__init__(dict(zip(self._key,self._val)))
+        super().__init__(dict(zip(self.__key,self.__val)))
         self.__setitem__(
-            self._key[-1],
-            osabspath(self.__getitem__(self._key[-1])) # the path has to exists
+            self.__key[-1],
+            osabspath(self.__getitem__(self.__key[-1])) # the path has to exists
             )
 
     def __setitem__(self, __k:str, __v:str) -> None:
@@ -313,7 +305,7 @@ class INI(dict):
         """
         
         super().__setitem__(__k,__v)
-        self._write()
+        self.__write()
 
     def __missing__(self, __k:str) -> int:
         """
@@ -338,7 +330,7 @@ class INI(dict):
                          for the upper left corner of the window
         """
 
-        self.__setitem__(self._key[0],self._dim.format(x,y))
+        self.__setitem__(self.__key[0],self.__dim.format(x,y))
 
     def set_res(self, w:int, h:int) -> None:
         """
@@ -349,42 +341,39 @@ class INI(dict):
         - h [int]     -> is the height of the window
         """
 
-        self.__setitem__(self._key[1],self._dim.format(w,h))
+        self.__setitem__(self.__key[1],self.__dim.format(w,h))
 
     def reset_pos(self) -> None:
         """
         it will reset dimensions and position of the window
         """
 
-        self.__setitem__(self._key[0], self._val[0])
-        self.__setitem__(self._key[1], self._val[1])
+        self.__setitem__(self.__key[0], self.__val[0])
+        self.__setitem__(self.__key[1], self.__val[1])
 
 class Screen:
     # This object is used to contain the screen surface in a mutable object 
     # and it has some function to it related that I uses very often
     
     __slots__ = (
-        '_clock',       # [pygame.time.Clock]   -> this pygame object is used
+        '__clock',       # [pygame.time.Clock]   -> this pygame object is used
                         #                           just to limit the fps
-        '_screen',      # [pygame.Surface]      -> this Surface is the one 
+        '__screen',      # [pygame.Surface]      -> this Surface is the one 
                         #                           taken as reference by
                         #                           pygame.display
-        '_settings',    # [INI]                 -> it contains all the settings
-        '_len',         # [int]                 -> is is the number of displays
+        '__settings',    # [INI]                 -> it contains all the settings
+        '__len',         # [int]                 -> is is the number of displays
                         #                           attached to the pc
-        '_win1_x',      # [int]                 -> it is the width of the first
+        '__win1_x',      # [int]                 -> it is the width of the first
                         #                           display
-        '_win1_y',      # [int]                 -> it is the height of the
+        '__win1_y',      # [int]                 -> it is the height of the
                         #                           first display
-        '_wintot_x',    # [int]                 -> it is the width of the
+        '__wintot_x',    # [int]                 -> it is the width of the
                         #                           full complex of displays
-        '_wintot_y',    # [int]                 -> it is the height of the 
+        '__wintot_y',    # [int]                 -> it is the height of the 
                         #                           full complex of displays
         )
 
-    _fps = 60           # [int]                 -> it is the upper limit of
-                        #                           frames drawn on the screen,
-                        #                           per second
     minx = 480          # [int]                 -> minimum width of the screen
                         #                           the program can take
     miny = 360          # [int]                 -> minimum height of the screen
@@ -398,19 +387,19 @@ class Screen:
         taken by ctypes
         """
 
-        self._settings = settings
+        self.__settings = settings
 
         # the get_desktop_sizes returns a list of the siszes for each dispaly,
         # but the overall taken screen display is different. idkw tho
-        self._len = len(pygame.display.get_desktop_sizes()) 
+        self.__len = len(pygame.display.get_desktop_sizes()) 
 
         from ctypes import windll
         #getting the screen sizes
         GetSystemMetrics = windll.user32.GetSystemMetrics
-        self._win1_x =  GetSystemMetrics(0)
-        self._win1_y =  GetSystemMetrics(1)
-        self._wintot_x = GetSystemMetrics(78)
-        self._wintot_y = GetSystemMetrics(79)
+        self.__win1_x =  GetSystemMetrics(0)
+        self.__win1_y =  GetSystemMetrics(1)
+        self.__wintot_x = GetSystemMetrics(78)
+        self.__wintot_y = GetSystemMetrics(79)
 
         #it creates the screen for the first time
         self.position_screen()
@@ -418,11 +407,11 @@ class Screen:
         if settings["full_screen"]:
             windll.user32.ShowWindow(pygame.display.get_wm_info()['window'], 3)
 
-        self._screen.fill(pygame.Color("black"))
+        self.__screen.fill(pygame.Color("black"))
         pygame.display.flip()
 
         # setting the clock
-        self._clock = pygame.time.Clock()
+        self.__clock = pygame.time.Clock()
 
     def position_screen(self) -> None:
         """
@@ -435,8 +424,8 @@ class Screen:
         """
 
         #getting the setting values
-        pos = list(map(int,self._settings["pos"].split(",")))
-        width,height = map(int,self._settings["resolution"].split(","))
+        pos = list(map(int,self.__settings["pos"].split(",")))
+        width,height = map(int,self.__settings["resolution"].split(","))
         
         #checking every setting is right
         #width and height have to be greater than the minimum values
@@ -447,33 +436,33 @@ class Screen:
             else:
                 width = self.minx
 
-            self._settings.set_res(width,height)
+            self.__settings.set_res(width,height)
 
         elif height<=self.miny:
             height = self.miny
-            self._settings.set_res(width,height)
+            self.__settings.set_res(width,height)
 
         # The positioning of the window on the screen has at least to be
         # with the upper left corner in on of the displays
-        if pos[0]>self._wintot_x or pos[1]>self._wintot_y or \
-            (self._len>1 and (\
-                (pos[0]>self._win1_x*2 and self._win1_x*2==self._wintot_x)\
+        if pos[0]>self.__wintot_x or pos[1]>self.__wintot_y or \
+            (self.__len>1 and (\
+                (pos[0]>self.__win1_x*2 and self.__win1_x*2==self.__wintot_x)\
                     or\
-                (pos[1]>self._win1_y*2 and self._win1_y*2==self._wintot_y)
+                (pos[1]>self.__win1_y*2 and self.__win1_y*2==self.__wintot_y)
             )):
 
-            self._settings.reset_pos()
-            width,height = map(int,self._settings["resolution"].split(","))
+            self.__settings.reset_pos()
+            width,height = map(int,self.__settings["resolution"].split(","))
 
         #setting the window position (suposing it is changed)
-        environ['SDL_VIDEO_WINDOW_POS'] = self._settings["pos"]
+        environ['SDL_VIDEO_WINDOW_POS'] = self.__settings["pos"]
 
         #creating a dummy window 
         #(it is used for solve some random bug when resizing)
         pygame.display.set_mode((width, height),pygame.RESIZABLE)
 
         #saving the new window
-        self._screen = pygame.display.set_mode((width, height),pygame.RESIZABLE)
+        self.__screen = pygame.display.set_mode((width, height),pygame.RESIZABLE)
 
     def get_rect(self, *args, **kwargs) -> pygame.Rect:
         '''
@@ -484,10 +473,10 @@ class Screen:
         - pygame.Rect -> is the rect of the object
         '''
         
-        return self._screen.get_rect(*args, **kwargs)
+        return self.__screen.get_rect(*args, **kwargs)
 
     def copy(self):
-        return self._screen.copy()
+        return self.__screen.copy()
 
     def draw(self, ob:object, *_others) -> None:
         """
@@ -498,9 +487,9 @@ class Screen:
         - object(s) to be drawn
         """
         
-        ob.draw(self._screen)
+        ob.draw(self.__screen)
         for _o in _others:
-            _o.draw(self._screen)
+            _o.draw(self.__screen)
     
     def blit(
         self,
@@ -517,9 +506,9 @@ class Screen:
                                                     tuple[int, int] position
         """
         
-        self._screen.blit(*surfpos)
+        self.__screen.blit(*surfpos)
         for _o in _others:
-            self._screen.blit(*_o)
+            self.__screen.blit(*_o)
 
     def fill(self, color:pygame.Color) -> None:
         """
@@ -530,15 +519,15 @@ class Screen:
         - [pygame.Color]    -> color used to fill the screen
         """
         
-        self._screen.fill(color)
+        self.__screen.fill(color)
 
-    def tick(self, fps:int=_fps) -> None:
+    def tick(self, fps:int=60) -> None:
         """
-        This function is used to make shure the program runs at _fps fps!
+        This function is used to make shure the program runs at 60 fps!
         It is possible to edit the fps counter but isn't recomended
         """
         
-        self._clock.tick(fps)
+        self.__clock.tick(fps)
 
     def quit(self) -> None:
         """
@@ -611,15 +600,10 @@ class Music:
 class Booleans(list):
     #It will be used to check that every screen format is right & working well
 
-    #cannot add slots 'couse its methods are read-only and cannot be replaced
-    # __slots__ = (
-    #     '_screen',  # [Screen]          -> it is the screen object
-    #     '_settings',# [INI]             -> it is the settings object
-    #     '_channels' # [tuple[pygame.mixer.Channel]]
-    #                 #                   -> it contains the channels
-    #     '_sounds'   # [tuple[pygame.mixer.Sound]]
-    #                 #                   -> it contains the channels
-    #     )
+    __slots__ = (
+        '__screen',     # [Screen]          -> it is the screen object
+        '__settings',   # [INI]             -> it is the settings object
+        )
 
     def __init__(self, screen:Screen, settings:INI) -> None:
         """
@@ -645,8 +629,8 @@ class Booleans(list):
         - settigns          [INI]           -> settings object
         """
         
-        self._screen = screen
-        self._settings = settings
+        self.__screen = screen
+        self.__settings = settings
 
         super().__init__((True,True,False,False,[]))
 
@@ -702,17 +686,16 @@ class Booleans(list):
 
         if self.check_1(pygame.WINDOWMAXIMIZED, event_list):
             self[3] = self[2] = False
-            self._settings['full_screen']=1
+            self.__settings['full_screen']=1
             return
         elif self.check_1(pygame.WINDOWRESTORED, event_list):
-            self._settings['full_screen']=0
+            self.__settings['full_screen']=0
 
 
         if self.check_1(pygame.WINDOWSIZECHANGED, event_list):
-            if self.check_1(pygame.WINDOWRESIZED, event_list):
-                if self.check_1(pygame.VIDEORESIZE, event_list):
-                    self[3] = self[2] = True
-                    return
+            if self.check_1(pygame.WINDOWRESIZED, event_list) and self.check_1(pygame.VIDEORESIZE, event_list):
+                self[3] = self[2] = True
+                return
             self[3] = self[2] = False
             return
         self[3] = False
@@ -731,7 +714,7 @@ class Booleans(list):
         """
 
         if self.check_1(pygame.QUIT, event_list):
-            self._screen.quit()
+            self.__screen.quit()
         elif esc and self.check_k(pygame.K_ESCAPE, event_list):
             pygame.mouse.set_cursor(*pygame.cursors.Cursor(0))
             self.breaker()
@@ -747,18 +730,18 @@ class Booleans(list):
 
         #it checks the position of the window has changed
         if self[2] and event.type == pygame.WINDOWMOVED:
-              self._settings.set_pos(event.x,event.y)
+              self.__settings.set_pos(event.x,event.y)
 
         #it checks the size of the window has changed
         elif event.type == pygame.WINDOWSIZECHANGED:
             self[1] = True
             if self[3]:
-                self._settings.set_res(
-                    max(event.x,self._screen.minx),
-                    max(event.y,self._screen.miny)
+                self.__settings.set_res(
+                    max(event.x,self.__screen.minx),
+                    max(event.y,self.__screen.miny)
                     )
-            if event.x<self._screen.minx or event.y<self._screen.miny:
-                self._screen.position_screen()
+            if event.x<self.__screen.minx or event.y<self.__screen.miny:
+                self.__screen.position_screen()
             self.replace()
 
     def update_booleans(self) -> None:
@@ -930,6 +913,7 @@ if not sysexecutable.endswith("python.exe"):
         syspath.append(k)
     
 utilities = Utilities()
+
 
 class ScrollingText(pygame.sprite.Sprite):
     # pygame sprite to handle a text that should be scrolling on the screen
@@ -7125,7 +7109,7 @@ if __name__ == "__main__":
                     # events for the action
                     pos = pygame.mouse.get_pos()
                     event_list = pygame.event.get()
-                    self.utilities.booleans.update_start(event_list,True)
+                    self.utilities.booleans.update_start(event_list)
 
                     if not self.utilities.booleans[0]:
                         break
@@ -7183,7 +7167,6 @@ if __name__ == "__main__":
                         # that's t oupdate every sprite
                         pygame.display.update()
 
-                self.utilities.booleans[1]=True
             #reset of self.search
             self.search = True
             self.utilities.booleans.end()
