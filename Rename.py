@@ -1546,10 +1546,6 @@ class CheckButton(NormalButton):
         # This is info property of the button used to make the
         # animation happen with "update"
         self._state = state
-        
-        #this just annoies me
-        #del self.get_text_rect #why can't I do it?
-        self.refresh = self._refresh
 
     def text_rect(self) -> None:
         """
@@ -1558,7 +1554,7 @@ class CheckButton(NormalButton):
 
         return
 
-    def _refresh(self, w:int, colors: Colors=utilities.colors) -> None:
+    def refresh(self, w:int, colors: Colors=utilities.colors) -> None:
         '''
         This function let re-use the same button without creating a new one
         when resizing the screen. After init_rect() has to be called
@@ -1800,7 +1796,6 @@ class ImageButton(NormalButton):
 
         self._colors = (bt_hover_color, bt_clicked_color)
 
-        self.refresh = self._refresh
 
     def text_rect(self) -> None:
         """
@@ -1809,7 +1804,7 @@ class ImageButton(NormalButton):
 
         return
 
-    def _refresh(self, image:pygame.Surface, colors: Colors=utilities.colors):
+    def refresh(self, image:pygame.Surface, colors: Colors=utilities.colors):
         '''
         This function let re-use the same button without creating a new one
         when resizing the screen. After init_rect() has to be called
@@ -1905,10 +1900,6 @@ class ImageButton(NormalButton):
                                                 in clicked state
         '''
 
-        norm_size = normal_image.get_size()
-        hov_size = hovered_image.get_size()
-        clic_size = clicked_image.get_size()
-
         #setting the image for the button in normal state
         self._normal = normal_image
 
@@ -1921,8 +1912,8 @@ class ImageButton(NormalButton):
         # These are infos property needed to make the Sprite class work as expecter
         self.image = self._normal
         self.rect = None
-   
-
+    
+    
 class LittleMenu(pygame.sprite.Sprite):
     # pygame sprite to handle the menu for the textBox object
     
@@ -3563,7 +3554,8 @@ class Drop(pygame.sprite.Sprite):
     def refresh(
         self,
         font:pygame.font.Font,
-        length:int
+        length:int,
+        colors:pygame.Color=utilities.colors
         ) -> None:
 
         self.length = length
@@ -3583,7 +3575,8 @@ class Drop(pygame.sprite.Sprite):
                 button.refresh(
                     length-self.h//2,
                     font.render(text,True,self.utilities.colors[self.colors[0]]),
-                    length-self.h//2
+                    length-self.h//2,
+                    colors=colors
                     )
                 
                 y+=button.init_rect(x=x,y=y).h
@@ -3592,7 +3585,7 @@ class Drop(pygame.sprite.Sprite):
             self.long_image = pygame.transform.scale(self.long_image, (length,y))
 
             if len(self.buttons)>1:
-                self.v_bar.refresh(self.h//2,self.rect.h,y,self.h)
+                self.v_bar.refresh(self.h//2,self.rect.h,y,self.h,colors=colors)
                 self.v_bar.init_rect(right = self.length,y=0)
                 self.bar = self.v_bar
             else:
@@ -3640,7 +3633,8 @@ class Drop(pygame.sprite.Sprite):
                         bt_hover_color=self.colors[3],
                         bt_pressed_color=self.colors[3],
                         func=self.box.replaceText,
-                        func_args=(f,)
+                        func_args=(f,),
+                        utilities=utilities
                 )
                 t.refresh(
                     self.font.render(f,True,self.utilities.colors[self.colors[0]]),
@@ -4007,6 +4001,7 @@ class VerticalBar(pygame.sprite.Sprite):
             bt_clicked_color,
             utilities=utilities
             )
+        
         self._down = ImageButton(
             bt_hover_color,
             bt_clicked_color,
@@ -4036,8 +4031,8 @@ class VerticalBar(pygame.sprite.Sprite):
         self._window_h = 10
 
         #setting the image
-        self.image = pygame.Surface((1,1)).convert_alpha()
-        self.rect = None
+        self.image = pygame.Surface((1,1),pygame.SRCALPHA)
+        self.rect:pygame.Rect = None
 
     def __float__(self) -> float:
         """
@@ -4088,6 +4083,7 @@ class VerticalBar(pygame.sprite.Sprite):
             colors = colors
             )
         t = self._up.init_rect(x=0, y=0)
+        
         self._down.refresh(
             pygame.transform.smoothscale(
                 self._down_i,
@@ -4385,15 +4381,10 @@ class HorizontalBar(pygame.sprite.Sprite):
 
     def __init__(
         self,
-        window_w:float,
-        window_h:float,
-        scroll_len:float,
-        real_len:float,
         bt_hover_color:str='light_blue',
         bt_clicked_color:str='dark_blue',
         bar_color:str="gray",
-        start_bar:float=0,
-        utilities: Utilities=utilities
+        utilities:Utilities=utilities
         ) -> None:
         '''
         Initializating the class to have a vertical bar for scroll things.
@@ -4429,61 +4420,42 @@ class HorizontalBar(pygame.sprite.Sprite):
 
         #setting the buttons
         self._left = ImageButton(
-            pygame.transform.smoothscale(
-                self._left_i,
-                (window_h, window_h)
-                ),
             bt_hover_color,
             bt_clicked_color,
             utilities=utilities
             )
-        t = self._left.init_rect(x=0, y=0)
 
         self._right = ImageButton(
-            pygame.transform.smoothscale(
-                self._right_i,
-                (window_h, window_h)
-                ),
             bt_hover_color,
             bt_clicked_color,
             utilities=utilities
             )
-        self._right.init_rect(right=window_w, y=0)
-
+        
         #setting all the lenght values
-        full_len = window_w- 2*t.w
-        bar_len = full_len*real_len/scroll_len
-        self._len = full_len-bar_len
-        if self._len > int(self._len):
-            self._len = int(self._len+1)
-        self._scroll_rate = (scroll_len-real_len)/(self._len)
+        self._len = 10
+        self._scroll_rate = 1
 
         #setting the values for the moving bar
-        self._start = t.w
+        self._start = 0
         self._translate = 0
-        if 0<start_bar/self._scroll_rate<self._len:
-            self.minus(start_bar/self._scroll_rate)
-
+        
         #setting the moving button
-        self._bar_r = pygame.Surface((bar_len,window_h)).convert()
-        self._bar_r.fill(utilities.colors[bar_color])
+        self._bar_r = pygame.Surface((1,1))
         self._bar = ImageButton(
-            self._bar_r,
             bt_hover_color,
             bt_clicked_color,
             utilities=utilities
             )
-        self._bar.init_rect(x=self._start+self._translate, y=0)
         self._g = pygame.sprite.Group(self._left, self._right, self._bar)
 
         #setting other values
         self._key_clicked = [False,False]
         self._bar_color = bar_color
-        self._window_w = window_w
+        self._window_w = 10
 
         #setting the image
-        self.image = pygame.Surface((window_w,window_h)).convert_alpha()
-        self.rect = None
+        self.image = pygame.Surface((1,1),pygame.SRCALPHA)
+        self.rect:pygame.Rect = None
 
     def __float__(self) -> float:
         """
@@ -4729,12 +4701,14 @@ class HorizontalBar(pygame.sprite.Sprite):
         if window_w==0:
             window_w=screen_rect.w
         t = cls(
+            utilities=utilities
+            )
+        t.refresh(
             window_w,
             cls.button_length,
             scroll_len,
             screen_rect.w,
-            utilities=utilities
-            )
+            colors=utilities.colors)
         t.init_rect(x=window_x, bottom=screen_rect.h)
         t.refresh, t._refresh = t._refresh, t.refresh
         return t
@@ -5410,7 +5384,7 @@ if __name__ == "__main__":
                 b[i]=not b[i]
 
             check_b = tuple(
-                [CheckButton(j,func=change,func_args=(b,i)),None,None]
+                [CheckButton(j,func=change,func_args=(b,i),utilities=utilities),None,None]
                 for i,j in enumerate(b)
             )
             
@@ -5424,7 +5398,7 @@ if __name__ == "__main__":
             def invert():
                 self.utilities.settings["del_pics"] = int(not self.utilities.settings["del_pics"])
 
-            check_d = CheckButton(self.utilities.settings["del_pics"],func=invert)
+            check_d = CheckButton(self.utilities.settings["del_pics"],func=invert,utilities=utilities)
             explain_d = RectengleText("gray",0,"Seleziona quest'opzione per eliminare le immagini in automatico","black")
 
             example = self.utilities.settings["rename"]
@@ -5433,12 +5407,12 @@ if __name__ == "__main__":
                 self.utilities.booleans[1]=True
                 self.utilities.settings['check_None'] = int(not self.utilities.settings['check_None'])
 
-            check_t = CheckButton(self.utilities.settings["check_None"],func=inv_res)
+            check_t = CheckButton(self.utilities.settings["check_None"],func=inv_res,utilities=utilities)
             t = TextBox(example,"Lascia vuoto per non rinominare",writable=True,rule = self.utilities.filename)
             example_s = [None,None]
 
             q = "Torna indietro"
-            q_b = NormalButton(func=self.utilities.booleans.breaker)
+            q_b = NormalButton(func=self.utilities.booleans.breaker,utilities=utilities)
 
             little_menu = LittleMenu()
             g = pygame.sprite.Group(c[0] for c in check_b)
@@ -5467,13 +5441,13 @@ if __name__ == "__main__":
                 settings_s[0] = bigger_font.render(settings,True,self.utilities.colors["black"])
                 settings_s[1] = settings_s[0].get_rect(y=button_heigh//2,centerx = centerx)
 
-                explain_t.refresh(width,font)
+                explain_t.refresh(width,font,colors=utilities.colors)
                 r = explain_t.init_rect(centerx=centerx, y = settings_s[1].bottom+button_heigh)
                 h = little_font.size("Pq")[1]
                 if max(little_font.size(a)[0]+h*2 for a in Song.name().values())>centerx:
                     little_font = pygame.font.SysFont(self.utilities.corbel,button_heigh//6)
                     h = little_font.size("Pq")[1]
-                check_t.refresh(h)
+                check_t.refresh(h,colors=utilities.colors)
                 r = check_t.init_rect(x = r.x,centery=r.bottom+button_heigh)
                 t.refresh(width-(r.width+h/2),font)
                 r = t.init_rect(x=r.right+h/2,centery=r.centery)
@@ -5481,7 +5455,7 @@ if __name__ == "__main__":
                 example_s[0] = little_font.render(missing.format(example,self.utilities.settings['check_None'],**Song.example()),True,self.utilities.colors["black"])
                 example_s[1] = example_s[0].get_rect(centerx=centerx, centery=r.bottom+button_heigh)
 
-                explain_b.refresh(width,font)
+                explain_b.refresh(width,font,colors=utilities.colors)
                 r = explain_b.init_rect(centerx=centerx, centery = example_s[1].bottom+button_heigh)
                 
                 bottom = r.bottom
@@ -5491,22 +5465,22 @@ if __name__ == "__main__":
                     else:
                         x=centerx/2-button_heigh
                         y=bottom + h
-                    check_b[i][0].refresh(h)
+                    check_b[i][0].refresh(h,colors=utilities.colors)
                     r = check_b[i][0].init_rect(x=x,centery=y)
                     check_b[i][1] = little_font.render(drop,True,self.utilities.colors["black"])
                     bottom = r.bottom
                     check_b[i][2] = check_b[i][1].get_rect(x = r.right+h/2, bottom=bottom)
                 
-                check_d.refresh(h)
+                check_d.refresh(h,colors=utilities.colors)
                 r = check_d.init_rect(x=centerx/6,y=bottom + h)
-                explain_d.refresh(width-h/2*3,font)
+                explain_d.refresh(width-h/2*3,font,colors=utilities.colors)
                 bottom = explain_d.init_rect(x=r.right+h/2,top=r.top).bottom
 
-                q_b.refresh(font.render(q,True,self.utilities.colors["black"]))
+                q_b.refresh(font.render(q,True,self.utilities.colors["black"]),colors=utilities.colors)
                 q_b.init_rect(centerx=centerx,y=bottom+button_heigh)
                 q_b.text_rect("center")
 
-                little_menu.refresh(little_font)
+                little_menu.refresh(little_font,colors=utilities.colors)
 
                 del bottom,r,h,width, font, bigger_font
 
@@ -5596,7 +5570,7 @@ if __name__ == "__main__":
 
         def add_image(self, song:Song, description:str, i:bytes, img:pygame.Surface, images:list, g:pygame.sprite.Group):
             song.images = (description,i,"jpeg")
-            images.append((description,i,img,RectengleText("black",50,description,"black"),ImageButton(func=self.del_image,func_args=(song, description, images))))
+            images.append((description,i,img,RectengleText("black",50,description,"black"),ImageButton(func=self.del_image,func_args=(song, description, images),utilities=utilities)))
             g.add(images[-1][-2:])
             self.utilities.booleans[1]=True
 
@@ -5616,7 +5590,7 @@ if __name__ == "__main__":
                         self.find.append(TextBox("","Descrizione"))
                         self.find[0].init_rect()
                         g_findet.add(self.find[0])
-                    self.find.append((image,ImageButton(pygame.Surface((1,1)),func = self.sel_image, func_args=(song,bts,image,images,g))))
+                    self.find.append((image,ImageButton(pygame.Surface((1,1)),func = self.sel_image, func_args=(song,bts,image,images,g),utilities=utilities)))
                     g_findet.add(self.find[-1][1])
                     self.utilities.booleans[1]=True
                     return
@@ -5664,7 +5638,7 @@ if __name__ == "__main__":
 
                 try:
                     image = image.get_raw_data()
-                    self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(func = self.sel_image, func_args=(song,image,k,images,g))))
+                    self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(func = self.sel_image, func_args=(song,image,k,images,g),utilities=utilities)))
                 except:
                     continue
 
@@ -5777,15 +5751,15 @@ if __name__ == "__main__":
                                 song.del_images(d)
                                 return
                             
-                            images.append((d,i,img,RectengleText(t,50,d,t),ImageButton(func=self.del_image,func_args=(song, d, images))))
+                            images.append((d,i,img,RectengleText(t,50,d,t),ImageButton(func=self.del_image,func_args=(song, d, images),utilities=utilities)))
                             g.add(images[-1][-2:])
                             del d,i,l,img
                         del kk,k,v
                         break
                 
                 search_t = TextBox("",search)
-                search_b = NormalButton(func=self.search,func_args=(song,search_t,images,g, g_findet))
-                back_b = NormalButton(func=self.utilities.booleans.breaker)
+                search_b = NormalButton(func=self.search,func_args=(song,search_t,images,g, g_findet),utilities=utilities)
+                back_b = NormalButton(func=self.utilities.booleans.breaker,utilities=utilities)
                 g.add(search_b,search_t)
 
                 del f,s,t,whole_data
@@ -5802,14 +5776,14 @@ if __name__ == "__main__":
                     font = pygame.font.Font(self.utilities.magic,button_heigh)
                     small_font = pygame.font.Font(self.utilities.magic,button_half)
 
-                    little_menu.refresh(small_font)
+                    little_menu.refresh(small_font,colors=utilities.colors)
 
                     x = y = button_heigh
                     for k,r in rectangles.items():
                         r[0] = font.render(k,True,black)
                         r[1]=r[0].get_rect(x=x,y=y)
                         xx=r[1].right+button_half
-                        r[2].refresh(screen_rect.w-(xx+button_heigh),font)
+                        r[2].refresh(screen_rect.w-(xx+button_heigh),font,colors=utilities.colors)
                         t = r[2].init_rect(x=xx,y=y)
                         y=max(t.bottom,r[1].bottom)+button_half
                         del xx,t,k,r
@@ -5817,15 +5791,15 @@ if __name__ == "__main__":
                     w = button_heigh*3
                     w=(w,w)
                     for img in images:
-                        img[-1].refresh(pygame.transform.smoothscale(img[2],w))
+                        img[-1].refresh(pygame.transform.smoothscale(img[2],w),colors=utilities.colors)
                         t = img[-1].init_rect(x=x,y=y)
                         xx = t.right+button_half
-                        img[-2].refresh(screen_rect.w-(xx+button_heigh),font)
+                        img[-2].refresh(screen_rect.w-(xx+button_heigh),font,colors=utilities.colors)
                         img[-2].init_rect(x=xx, centery=t.centery)
                         y=t.bottom+button_half
                         del img,t,xx
 
-                    search_b.refresh(font.render(search,True,black),0)
+                    search_b.refresh(font.render(search,True,black),colors=utilities.colors)
                     t = search_b.init_rect()
                     search_t.refresh(screen_rect.w-(t.w+button_half*5),font)
                     t = search_t.init_rect(x=x,y=y)
@@ -5838,19 +5812,19 @@ if __name__ == "__main__":
                         y = self.find[0].init_rect(x=x,y=y).bottom+button_half
                         for img,ib in self.find[1:]:
                             try:
-                                ib.refresh(pygame.transform.smoothscale(img,w))
+                                ib.refresh(pygame.transform.smoothscale(img,w),colors=utilities.colors)
                             except:
-                                ib.refresh(pygame.transform.scale(img,w))
+                                ib.refresh(pygame.transform.scale(img,w),colors=utilities.colors)
                             y = ib.init_rect(x=x,y=y).bottom+button_half
 
-                    back_b.refresh(font.render(back,True,black),0)
+                    back_b.refresh(font.render(back,True,black),colors=utilities.colors)
                     t = back_b.init_rect(centerx=screen_rect.w/2,centery=screen_rect.h-button_heigh)
                     back_b.text_rect()
 
                     short = pygame.transform.scale(short,(screen_rect.w,t.top-button_half))
                     long = pygame.transform.scale(long,(screen_rect.w,y))
                     if long.get_height()>=short.get_height():
-                        v_bar.refresh(screen_rect,y*2,window_h=short.get_height())
+                        v_bar.refresh(screen_rect,y*2,window_h=short.get_height(),colors=utilities.colors)
                         bar = v_bar
                     else:
                         bar = None
@@ -5967,10 +5941,10 @@ if __name__ == "__main__":
                 short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
                 title_s = [None,None]
                 if wait:
-                    start_b = NormalButton(func=self.run)
+                    start_b = NormalButton(func=self.run,utilities=utilities)
                 else:
                     start_b = NormalButton(func=self.fastrun)
-                options_b = NormalButton(func=self.options)
+                options_b = NormalButton(func=self.options,utilities=utilities)
                 g = pygame.sprite.Group(options_b,start_b)
 
                 self.utilities.booleans[1]=True
@@ -5995,7 +5969,7 @@ if __name__ == "__main__":
                         short_s[1] = short_s[0].get_rect(x=0,y=title_heigh*2)
                         long_s = tuple(pygame.Surface((short_s[1].w,max_lenght if max_lenght*k<full_lenght else full_lenght%max_lenght),pygame.SRCALPHA) for k in range(int(full_lenght//max_lenght)+1))
 
-                        v_bar.refresh(v_bar.button_length,short_s[1].h,full_lenght,short_s[1].h)
+                        v_bar.refresh(v_bar.button_length,short_s[1].h,full_lenght,short_s[1].h,colors=utilities.colors)
                         v_bar.init_rect(right=screen_rect.w,y=short_s[1].y)
                         bar = v_bar
                     else:
@@ -6019,10 +5993,10 @@ if __name__ == "__main__":
                         y+=text_heigh
 
                     w = max(font.size(options)[0],font.size(start)[0])
-                    options_b.refresh(font.render(options,True,black),w)
+                    options_b.refresh(font.render(options,True,black),w,colors=utilities.colors)
                     r = options_b.init_rect(centerx=screen_rect.w//3,centery=screen_rect.h-text_heigh)
                     options_b.text_rect()
-                    start_b.refresh(font.render(start,True,black),w)
+                    start_b.refresh(font.render(start,True,black),w,colors=utilities.colors)
                     start_b.init_rect(centerx=screen_rect.w//3*2,centery=r.centery)
                     start_b.text_rect()
 
@@ -6144,8 +6118,8 @@ if __name__ == "__main__":
                 c.work = work
 
                 t = pygame.Surface((1,1))
-                stop_b = NormalButton(func=s)
-                cont_b = NormalButton(func=c)
+                stop_b = NormalButton(func=s,utilities=utilities)
+                cont_b = NormalButton(func=c,utilities=utilities)
 
                 self.utilities.booleans[1] = True
                 while self.utilities.booleans[1]:
@@ -6164,10 +6138,10 @@ if __name__ == "__main__":
                     file_s[1] = (0,screen_rect.centery)
 
                     w_min = min(small_font.size(stop)[0],small_font.size(cont)[0])
-                    stop_b.refresh(w_min,small_font.render(stop,True,black))
+                    stop_b.refresh(w_min,small_font.render(stop,True,black),colors=utilities.colors)
                     stop_b.init_rect(centerx=screen_rect.w/3,centery=screen_rect.h/4*3)
                     stop_b.text_rect()
-                    cont_b.refresh(w_min,small_font.render(cont,True,black))
+                    cont_b.refresh(w_min,small_font.render(cont,True,black),colors=utilities.colors)
                     cont_b.init_rect(centerx=screen_rect.w/3*2,centery=screen_rect.h/4*3)
                     cont_b.text_rect()
 
@@ -6273,16 +6247,16 @@ if __name__ == "__main__":
                 pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(4,8),(12,8),(14,10),(24,10),(24,14),(8,14)),2)
                 pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(8,14),(28,14),(20,24)),2)
 
-                player_b = ImageButton(func =lambda: self.utilities.music.start(self.list_mp3[starting].get_Sound()))
-                stopper_b = ImageButton(func = self.utilities.music.stop)
-                upper_b = ImageButton(func = self.utilities.music.up)
-                downer_b = ImageButton(func = self.utilities.music.down)
-                folder_b = ImageButton(func=lambda: self.explorer(osjoin(self.list_mp3[starting].path,self.list_mp3[starting].file)))
+                player_b = ImageButton(func =lambda: self.utilities.music.start(self.list_mp3[starting].get_Sound()),utilities=utilities)
+                stopper_b = ImageButton(func = self.utilities.music.stop,utilities=utilities)
+                upper_b = ImageButton(func = self.utilities.music.up,utilities=utilities)
+                downer_b = ImageButton(func = self.utilities.music.down,utilities=utilities)
+                folder_b = ImageButton(func=lambda: self.explorer(osjoin(self.list_mp3[starting].path,self.list_mp3[starting].file)),utilities=utilities)
 
-                prev_b = NormalButton(func=self.__prev)
-                follow_b = NormalButton(func=self.__follow)
-                stop_b = NormalButton(func=self.__stop)
-                refresh_b = NormalButton(func=self.__refresh)
+                prev_b = NormalButton(func=self.__prev,utilities=utilities)
+                follow_b = NormalButton(func=self.__follow,utilities=utilities)
+                stop_b = NormalButton(func=self.__stop,utilities=utilities)
+                refresh_b = NormalButton(func=self.__refresh,utilities=utilities)
                 g_diff.add(prev_b,follow_b,stop_b,refresh_b,player_b,stopper_b,upper_b,downer_b,folder_b)
 
                 droppable:dict[str,tuple[Drop|None,TextBox,list[pygame.Surface,pygame.Rect]]] = {}
@@ -6337,13 +6311,13 @@ if __name__ == "__main__":
                             this_b.func.args=(*this_b.func.args[:2],r.bottom+space/2,*this_b.func.args[3:])
                             
                         c=[]
-                        b = (NormalButton(func=__add, func_args=(c,)),NormalButton(func=__del, func_args=(c,)),c)
+                        b = (NormalButton(func=__add, func_args=(c,),utilities=utilities),NormalButton(func=__del, func_args=(c,),utilities=utilities),c)
                         g.add(*b[:2])
                         boxes[k]=([v,None,None],b)
                         del __del,__add
 
                     elif "images" == k:
-                        b = NormalButton(func=lambda:self.edpics(self.list_mp3[starting]))
+                        b = NormalButton(func=lambda:self.edpics(self.list_mp3[starting]),utilities=utilities)
                         g.add(b)
                         boxes[k]=([v,None,None],b)
 
@@ -6389,7 +6363,7 @@ if __name__ == "__main__":
                         font = pygame.font.Font(self.utilities.magic,button_heigh)
                         small_font = pygame.font.Font(self.utilities.magic,int(button_heigh/2))
 
-                        little_menu.refresh(small_font)
+                        little_menu.refresh(small_font,colors=utilities.colors)
 
                         x = y = button_heigh
                         for k in Song.order():
@@ -6436,24 +6410,24 @@ if __name__ == "__main__":
                                 drop = boxes[k]
                                 drop[0][1] = font.render(drop[0][0],True,black)
                                 drop[0][2] = drop[0][1].get_rect(x=x,y=y)
-                                drop[-1][0].refresh(font.render(add,True,black),0)
+                                drop[-1][0].refresh(font.render(add,True,black),colors=utilities.colors)
                                 r = drop[-1][0].init_rect(x=drop[0][2].right+button_heigh,bottom=drop[0][2].bottom)
-                                drop[-1][0].text_rect("center")
-                                drop[-1][1].refresh(font.render(delete,True,black),0)
+                                drop[-1][0].text_rect()
+                                drop[-1][1].refresh(font.render(delete,True,black),colors=utilities.colors)
                                 drop[-1][1].init_rect(x=r.right+button_heigh,bottom=drop[0][2].bottom)
-                                drop[-1][1].text_rect("center")
+                                drop[-1][1].text_rect()
                                 comments = getattr(self.list_mp3[starting],k)
                                 y=r.bottom+button_heigh/2
                                 i=0
                                 dr = drop[-1][-1]
                                 for description,comment,*_ in comments:
                                     if i<len(dr):
-                                        dr[i].replaceText(description if description else "")
                                         dr[i].refresh(screen_rect.w/4,font)
+                                        dr[i].replaceText(description if description else "")
                                         r = dr[i].init_rect(x=x,y=y)
                                         i+=1
-                                        dr[i].replaceText(comment if comment else "")
                                         dr[i].refresh(screen_rect.w/3*2,font)
+                                        dr[i].replaceText(comment if comment else "")
                                         r = dr[i].init_rect(x=r.right+button_heigh,bottom=r.bottom)
                                         i+=1
                                         y=r.bottom+button_heigh/2
@@ -6479,7 +6453,7 @@ if __name__ == "__main__":
                                 b = boxes[k]
                                 b[0][1] = font.render(b[0][0],True,black)
                                 b[0][2] = b[0][1].get_rect(x=x,y=y)
-                                b[1].refresh(font.render(edit,True,black),0)
+                                b[1].refresh(font.render(edit,True,black),colors=utilities.colors)
                                 y=b[1].init_rect(x=b[0][2].right+button_heigh/2,centery=b[0][2].centery).bottom+button_heigh/2
                                 b[1].text_rect()
 
@@ -6501,39 +6475,38 @@ if __name__ == "__main__":
                         ),screen_rect.w/6)
                         w = screen_rect.w/5
                         x = w/2
-                        prev_b.refresh(font.render(prev,True,black),width,width)
+                        prev_b.refresh(font.render(prev,True,black),width,width,colors=utilities.colors)
                         prev_b.init_rect(centerx=x,bottom=y)
                         prev_b.text_rect()
                         x+=w
-                        follow_b.refresh(font.render(follow,True,black),width,width)
+                        follow_b.refresh(font.render(follow,True,black),width,width,colors=utilities.colors)
                         follow_b.init_rect(centerx=x,bottom=y)
                         follow_b.text_rect()
                         x+=w
-                        stop_b.refresh(font.render(stop,True,black),width,width)
+                        stop_b.refresh(font.render(stop,True,black),width,width,colors=utilities.colors)
                         t = stop_b.init_rect(centerx=x,bottom=y)
                         stop_b.text_rect()
                         x+=w
-                        refresh_b.refresh(font.render(refresh,True,black),width,width)
+                        refresh_b.refresh(font.render(refresh,True,black),width,width,colors=utilities.colors)
                         y = refresh_b.init_rect(centerx=x,bottom=y).top
                         refresh_b.text_rect()
 
                         x+=w
                         ww=(width//5,width//5)
-                        stopper_b.refresh(pygame.transform.scale(stopper,ww))
+                        stopper_b.refresh(pygame.transform.scale(stopper,ww),colors=utilities.colors)
                         t=tt = stopper_b.init_rect(centerx=x,centery=t.centery)
-                        player_b.refresh(pygame.transform.scale(player,ww))
+                        player_b.refresh(pygame.transform.scale(player,ww),colors=utilities.colors)
                         t = player_b.init_rect(right=t.left,centery=t.centery)
-                        folder_b.refresh(pygame.transform.scale(folder,ww))
+                        folder_b.refresh(pygame.transform.scale(folder,ww),colors=utilities.colors)
                         folder_b.init_rect(right=t.left,centery=t.centery)
-                        downer_b.refresh(pygame.transform.scale(downer,ww))
+                        downer_b.refresh(pygame.transform.scale(downer,ww),colors=utilities.colors)
                         tt = downer_b.init_rect(left=tt.right,centery=tt.centery)
-                        upper_b.refresh(pygame.transform.scale(upper,ww))
+                        upper_b.refresh(pygame.transform.scale(upper,ww),colors=utilities.colors)
                         upper_b.init_rect(left=tt.right,centery=tt.centery)
-
 
                         shorter = pygame.transform.scale(shorter,(screen_rect.w,y))
                         if longer.get_height()>=shorter.get_height():
-                            v_bar.refresh(screen_rect,longer.get_height(),window_h=shorter.get_height())
+                            v_bar.refresh(screen_rect,longer.get_height(),window_h=shorter.get_height(),colors=utilities.colors)
                             bar = v_bar
                         else:
                             bar = None
@@ -6772,12 +6745,12 @@ if __name__ == "__main__":
             close = "Esci"
             
             t = pygame.Surface((1,1))
-            close_b = NormalButton(func=self.utilities.screen.quit)
-            opt_b = NormalButton(func=self.utilities.color_reverse)
-            new_b = NormalButton(func=self.run, func_args=(self.song,True))
-            old_b = NormalButton(func=self.run, func_args=(self.song,))
-            goback = ImageButton(func=self.walk_out)
-            replace = ImageButton(func=self.replace_folder)
+            close_b = NormalButton(func=self.utilities.screen.quit,utilities=utilities)
+            opt_b = NormalButton(func=self.utilities.color_reverse,utilities=utilities)
+            new_b = NormalButton(func=self.run, func_args=(self.song,True),utilities=utilities)
+            old_b = NormalButton(func=self.run, func_args=(self.song,),utilities=utilities)
+            goback = ImageButton(func=self.walk_out,utilities=utilities)
+            replace = ImageButton(func=self.replace_folder,utilities=utilities)
             self.directory_box = TextBox(initial_text=self.path, empty_text=empty_textBox, max_char=500, bar_color="black",func=self.replace_folder)
 
             # a group of sprites
@@ -6831,7 +6804,7 @@ if __name__ == "__main__":
                     if (button_w+NormalButton.button_space)*4>screen_rect.w:
                         smallfont = pygame.font.SysFont(self.utilities.corbel,int(button_heigh*(screen_rect.w/4-8)/button_w))
                     
-                    little_menu.refresh(smallfont)
+                    little_menu.refresh(smallfont,colors=utilities.colors)
 
                     title_s[0] = fontone.render(title, True, self.utilities.colors["black"])
                     title_s[1] = title_s[0].get_rect(x=button_heigh,y=space)
@@ -6860,19 +6833,19 @@ if __name__ == "__main__":
                     button_y = little_surface[1].bottom+button_heigh*2
                     x=button_x*0.5
 
-                    close_b.refresh(close_s,button_w)
+                    close_b.refresh(close_s,button_w,colors=utilities.colors)
                     x += close_b.init_rect(x=x,centery=button_y).width+button_x
                     close_b.text_rect()
 
-                    opt_b.refresh(opt_s,button_w)
+                    opt_b.refresh(opt_s,button_w,colors=utilities.colors)
                     x += opt_b.init_rect(x=x,centery=button_y).width+button_x
                     opt_b.text_rect()
 
-                    new_b.refresh(new_s,button_w)
+                    new_b.refresh(new_s,button_w,colors=utilities.colors)
                     x += new_b.init_rect(x=x,centery=button_y).width+button_x
                     new_b.text_rect()
 
-                    old_b.refresh(old_s,button_w)
+                    old_b.refresh(old_s,button_w,colors=utilities.colors)
                     old_b.init_rect(x=x,centery=button_y)
                     old_b.text_rect()
 
@@ -6882,13 +6855,13 @@ if __name__ == "__main__":
                     #Bottone torna indietro
                     surf.fill(self.utilities.colors['gray'])
                     surf.blit(pygame.transform.scale(self.arr_back,surf_t),(0,0))
-                    goback.refresh(surf.copy())
+                    goback.refresh(surf.copy(),colors=utilities.colors)
                     temp = goback.init_rect(x=f.x+f.w,y=f.y)
                     
                     #Bottone vai avanti
                     surf.fill(self.utilities.colors['gray'])
                     surf.blit(pygame.transform.scale(self.circle,surf_t),(0,0))
-                    replace.refresh(surf.copy())
+                    replace.refresh(surf.copy(),colors=utilities.colors)
                     replace.init_rect(x=temp.x+temp.w,y=temp.y)
                     del f,temp,x
 
@@ -6897,7 +6870,7 @@ if __name__ == "__main__":
                         vw = little_surface[1].w-NormalButton.button_space
                         y = 1
                         for i in range(len(folders_b)):
-                            folders_b[i].refresh(smallfont.render(folders[i],True,self.utilities.colors["black"]),vw,little_width)
+                            folders_b[i].refresh(smallfont.render(folders[i],True,self.utilities.colors["black"]),vw,little_width,colors=utilities.colors)
                             y += folders_b[i].init_rect(x=0,y=y).h+1
                             folders_b[i].text_rect('midleft')
 
@@ -6905,9 +6878,9 @@ if __name__ == "__main__":
 
                         if y>little_surface[1].h:
                             try:
-                                v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h)
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h,colors=utilities.colors)
                             except:
-                                v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h)
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h,colors=utilities.colors)
                             v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
                             bar = v_bar
                         else:
@@ -6944,8 +6917,8 @@ if __name__ == "__main__":
                         vw = little_surface[1].w-NormalButton.button_space
                         y = 1
                         for directory in folders:
-                            folders_b.append(NormalButton(func=self.walk_in,func_args=(directory,)))
-                            folders_b[-1].refresh(smallfont.render(directory,True,self.utilities.colors["black"]),vw,little_width)
+                            folders_b.append(NormalButton(func=self.walk_in,func_args=(directory,),utilities=utilities))
+                            folders_b[-1].refresh(smallfont.render(directory,True,self.utilities.colors["black"]),vw,little_width,colors=utilities.colors)
                             y += folders_b[-1].init_rect(x=0,y=y).h+1
                             folders_b[-1].text_rect('midleft')
 
@@ -6953,9 +6926,9 @@ if __name__ == "__main__":
 
                         if y>little_surface[1].h:
                             try:
-                                v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h,False)
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h,False,colors=utilities.colors)
                             except:
-                                v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h,False)
+                                v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h,False,colors=utilities.colors)
                             v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
                             bar = v_bar
                         else:
