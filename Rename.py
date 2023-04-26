@@ -22,7 +22,7 @@ class Colors:
     # the night_mode
 
     __slots__ = (
-        '__colors',      #dict[str:pygame.Color] -> has the colors
+        '_colors',      #dict[str:pygame.Color] -> has the colors
         '__colors_dark'  #dict[str:pygame.Color] -> has the colors for dark mode
         )
 
@@ -33,7 +33,7 @@ class Colors:
     alphed = pygame.Color(0,0,0,5)
 
     def __init__(self) -> None:
-        self.__colors = {
+        self._colors = {
             'background': pygame.Color(239, 239, 239),
             'white': pygame.Color(255, 255, 255),
             'gray': pygame.Color(196, 196, 196),
@@ -79,15 +79,15 @@ class Colors:
         """
 
         if type(__color) is tuple:
-            return self.__colors[__color[0]]-pygame.Color(0,0,0,255-__color[1])
-        return self.__colors[__color]
+            return self._colors[__color[0]]-pygame.Color(0,0,0,255-__color[1])
+        return self._colors[__color]
         
     def reverse(self) -> None:
         """
         reverse the colors for the night theme
         """
 
-        self.__colors, self.__colors_dark = self.__colors_dark, self.__colors
+        self._colors, self.__colors_dark = self.__colors_dark, self._colors
 
 class ENV(dict):
     #this object simulates the dotenv package to work with .env file
@@ -915,41 +915,37 @@ if not sysexecutable.endswith("python.exe"):
 utilities = Utilities()
 
 
-class ScrollingText(pygame.sprite.Sprite):
+class ScrollingSurface(pygame.sprite.Sprite):
     # pygame sprite to handle a text that should be scrolling on the screen
 
     __slots__ = (
-        "_text_surf",   # [pygame.Surf]     -> full text
-        "_text_rect",   # [pygame.Rect]     -> of "_text_surf"
-        "_text_x",      # [int]             -> x position where to extract the
-                        #                       subsurface from "_text_surf"
-        "_mod_x",       # [int]             -> x position where to place the
+        "__surf",    # [pygame.Surf]     -> full text
+        "__rect",       # [pygame.Rect]     -> of "__surf"
+        "__rect_x",     # [int]             -> init  x position of the image rect
+        "__surf_x",     # [int]             -> x position where to extract the
+                        #                       subsurface from "__surf"
+        "__mod_x",      # [int]             -> x position where to place the
                         #                       extracted subsurface on the
                         #                       screen
-        "frame",        # [int]             -> counts the frames the surface is
+        "__frame",      # [int]             -> counts the frames the surface is
                         #                       in stopped
-        "_w",           # [float|int]       -> is the lenght of the space
-                        #                       _text_surf is suppose to be
+        "__width",      # [float|int]       -> is the lenght of the space
+                        #                       __surf is suppose to be
                         #                       scrolled
-        "_pause",       # [int]             -> the number of frame _text_surf
+        "__pause",      # [int]             -> the number of __frame __surf
                         #                       is in pause
-        '_need_sub',    # [bool]            -> is True if _text_surf is longer
-                        #                       than _w
-        '_len',         # [int]             -> is the lenght of the subsurface
+        '__need_sub',   # [bool]            -> is True if __surf is longer
+                        #                       than __width
+        '__length',     # [int]             -> is the lenght of the subsurface
                         #                       is wanted to be extracted from
-                        #                       _text_surf
+                        #                       __surf
         'image',        # [pygame.Surf]     -> the resulted image is wanted to
                         #                       be blit on the screen
         'rect'          # [pygame.Rect]     -> rect of the dimensions of the
                         #                       text is showed
         )
 
-    def __init__(
-        self,
-        w:float|int,
-        text_surf:pygame.Surface,
-        pause:int=105
-        ) -> None:
+    def __init__(self, pause:int=105, *args, **kwargs) -> None:
         '''
         Initializating the class to have a the scrolling text.
         After, init_rect() has to be called
@@ -964,9 +960,18 @@ class ScrollingText(pygame.sprite.Sprite):
         '''
 
         # initialising basic stuff
-        super().__init__()
-        self._pause = pause
-        self.refresh(w, text_surf)
+        super().__init__(*args, **kwargs)
+        self.__pause = pause
+        
+        self.__surf_x = self.__mod_x = self.__frame = 0
+        self.__rect_x = self.__length = self.__width = 0
+        self.__need_sub = True
+
+        self.__surf:pygame.Surface = None
+        self.__rect: pygame.Rect = None
+
+        self.image:pygame.Surface = None
+        self.rect: pygame.Rect = None
 
     def get_rect(self) -> pygame.Rect:
         '''
@@ -992,7 +997,7 @@ class ScrollingText(pygame.sprite.Sprite):
         '''
 
         self.rect = self.image.get_rect(**kwargs)
-        self._x = self.rect.x
+        self.__rect_x = self.rect.x
         return self.rect
 
     def update(self, *_) -> None:
@@ -1004,53 +1009,53 @@ class ScrollingText(pygame.sprite.Sprite):
         '''
 
         #it change nothing if the text doesn't change
-        if self._need_sub:
+        if self.__need_sub:
 
-            if self._text_x == 0 and self._len < self._w:
+            if self.__surf_x == 0 and self.__length < self.__width:
                 # PHASE 4
-                # the text is showing from the right, not \w the full lenght _w
-                self._len += 1
-                self._mod_x -= 1
+                # the text is showing from the right, not \w the full lenght __width
+                self.__length += 1
+                self.__mod_x -= 1
 
-            elif self._len == self._w and self.frame <= self._pause:
+            elif self.__length == self.__width and self.__frame <= self.__pause:
                 # PHASE 0
                 # the start point text is on the left and it is in pause
-                self.frame += 1
+                self.__frame += 1
 
-            elif self._len == self._w\
+            elif self.__length == self.__width\
                 and\
-                self._text_x+self._len < self._text_rect.w:
+                self.__surf_x+self.__length < self.__rect.w:
                 # PHASE 1
                 # the text is scrolling outide to the left until
-                # it is possible to keep _len equals to _w
-                self._text_x += 1
+                # it is possible to keep __length equals to __width
+                self.__surf_x += 1
 
-            elif self._len < 1:
+            elif self.__length < 1:
                 # PHASE 3
                 # it happens only once per cycle:
                 # it reset the position all the way on the right for 1 pixel
-                self._text_x = 0
-                self._mod_x = self._w-1
+                self.__surf_x = 0
+                self.__mod_x = self.__width-1
 
             else:
                 # PHASE 2
                 # the text complitely fiding away on the left
-                self._text_x += 1
-                self._len -= 1
-                if self.frame != 0:
-                    self.frame = 0
+                self.__surf_x += 1
+                self.__length -= 1
+                if self.__frame != 0:
+                    self.__frame = 0
 
             # just setting the image and its position
-            self.image = self._text_surf.subsurface(
-                self._text_x,
+            self.image = self.__surf.subsurface(
+                self.__surf_x,
                 0,
-                self._len,
-                self._text_rect.h
+                self.__length,
+                self.__rect.h
                 )
 
             # updates the position and sizes of the rect
-            self.rect.x = self._x + self._mod_x
-            self.rect.w=self._len
+            self.rect.x = self.__rect_x + self.__mod_x
+            # self.rect.w=self.__length
 
     def draw(self, screen:pygame.Surface) -> None:
         """
@@ -1068,8 +1073,8 @@ class ScrollingText(pygame.sprite.Sprite):
         This function is used to restart the animation if needed
         """
 
-        self._text_x = self._mod_x = self.frame = 0
-        self._len = self._w
+        self.__surf_x = self.__mod_x = self.__frame = 0
+        self.__length = self.__width
 
     def refresh(self, w:float|int, text_surf:pygame.Surface) -> None:
         '''
@@ -1085,53 +1090,51 @@ class ScrollingText(pygame.sprite.Sprite):
         '''
         
         #setting these variables
-        self._text_surf = text_surf
-        self._text_rect = text_surf.get_rect()
-        self._text_x = self._mod_x = self.frame = 0 
-        self._w = w
+        self.__surf = text_surf
+        self.__rect = text_surf.get_rect()
+        self.__surf_x = self.__mod_x = self.__frame = 0 
+        self.__width = w
 
         # want to compute the scrolling only if the text_surf is longer that the w
-        if self._text_rect.w>w:
-            self._need_sub = True
-            self._len = w
-            self.image = self._text_surf.subsurface((self.frame, self.frame, w, self._text_rect.h))
+        if self.__rect.w>w:
+            self.__need_sub = True
+            self.__length = w
+            self.image = self.__surf.subsurface((self.__frame, self.__frame, w, self.__rect.h))
         else:
 
-            self._need_sub = False
-            self.image = self._text_surf
+            self.__need_sub = False
+            self.image = self.__surf
 
 class NormalButton(pygame.sprite.Sprite):
     # pygame sprite to handle how a button should behave
     
     __slots__ = (
-        '_text_surf',       # [pygame.Surf]         -> text to blit on the
+        '_surf',       # [pygame.Surf]         -> text to blit on the
                             #                           button
-        '_button_image',    # [pygame.Surf]         -> shape of the button
+        '_normal',    # [pygame.Surf]         -> shape of the button
                             #                           in normal state
-        '_hover_image',     # [pygame.Surf]         -> shape od the button
+        '_hovered',     # [pygame.Surf]         -> shape od the button
                             #                           in hover state
-        '_clicked_image',   # [pygame.Surf]         -> shape of the button
+        '_clicked',   # [pygame.Surf]         -> shape of the button
                             #                           in clicked state
         '_colors',          # [tuple[str,str,str]]  -> the choosed colors as
                             #                           (bt_normal_color,
                             #                           bt_hover_color,
                             #                           bt_pressed_color)
-        '_clicked',         # [bool]                -> says if the button is
+        '_is_clicked',         # [bool]                -> says if the button is
                             #                           clicked
         'func',             # [callable]            -> the function that is
                             #                           called when the button
                             #                           is released after
                             #                           clicked
-        '_hovered',         # [bool]                -> says if the mouse is
+        '_is_hovered',         # [bool]                -> says if the mouse is
                             #                           hovering over the
                             #                           button
         'image',            # [pygame.Surf]         -> image shown after the
                             #                           button state is updated
         'rect',             # [pygame.Rect]         -> rect of the dimensions
                             #                           of the button
-        "_mute",            # [bool]                -> if True, hovering will
-                            #                           make a sound
-        '_scrolling'        # [None|ScrollingText]  -> if ScrollingText, is
+        '_scrolls'        # [None|ScrollingSurface]  -> if ScrollingSurface, is
                             #                           replaced by Group and
                             #                           it will be updated
         )
@@ -1142,16 +1145,14 @@ class NormalButton(pygame.sprite.Sprite):
 
     def __init__(
         self,
-        w_min:float,
-        text_surf:pygame.Surface,
-        w_max:float=0,
-        h_min:float=0,
         bt_normal_color:str='gray',
         bt_hover_color:str='light_blue',
         bt_pressed_color:str='dark_blue',
         func:callable=None,
-        args:tuple=(),
-        utilities: Utilities=utilities
+        func_args:tuple=(),
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a button with text.
@@ -1186,28 +1187,31 @@ class NormalButton(pygame.sprite.Sprite):
         '''
 
         # initializing the sprite class
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
         #setting the function
         if func is None:
             self.func = func
         else:
-            self.func = utilities.superfunc(func,args)
+            self.func = utilities.superfunc(func,func_args)
 
         self._colors = (bt_normal_color, bt_hover_color, bt_pressed_color)
 
-        self._scrolling = None
-        self._button_image = pygame.Surface((1,1))
-        self._hover_image = self._button_image.copy()
-        self._clicked_image = self._button_image.copy()
+        self._scrolls:ScrollingSurface = None
+        self._surf:pygame.Surface = None
+        self._normal:pygame.Surface = None
+        self._hovered:pygame.Surface= None
+        self._clicked:pygame.Surface = None
 
-        #defining the actual sprite images
-        self.refresh(w_min, text_surf, w_max, h_min, colors = utilities.colors)
+        self._is_clicked = self._is_hovered = False
+
+        self.image:pygame.Surface = None
+        self.rect:pygame.Rect = None
 
     def refresh(
         self,
-        w_min:float,
-        text_surf:pygame.Surface,
+        surf:pygame.Surface,
+        w_min:float=0,
         w_max:float=0,
         h_min:float=0,
         colors: Colors=utilities.colors
@@ -1236,68 +1240,47 @@ class NormalButton(pygame.sprite.Sprite):
 
         # setting the size of the button based on the given rendered text
         # options, I think it's pretty clear... isn't it?
-        self._text_surf = text_surf
-        t_size = text_surf.get_size()
+        self._surf = surf
+        surf_w,surf_h = surf.get_size()
 
         #getting the height of the button
-        t = max(h_min, t_size[1]+self.button_space)
+        w = max(w_min, surf_w+self.button_space)
+        h = max(h_min, surf_h+self.button_space)
 
-        #if the width of the text is greater than the min length
-        if t_size[0]>=w_min:
-
-            #it checks if the lenght max is given, if not it uses the text_surf
-            if not w_max:
-                self._scrolling = None
-                t_size = (t_size[0]+self.button_space, t)
-
-            #if lenght max is given and is smaller than text_surf's,
-            # ScrollingText is used
-            elif t_size[0]+self.button_space >= w_max:
-                if self._scrolling is None:
-                    self._scrolling = ScrollingText(w_max, text_surf)
-                else:
-                    self._scrolling.refresh(w_max, text_surf)
-                t_size = (w_max, t)
-            
-            # if lenght max is given and is greater than text_surf's,
-            # text_surf is used
-            else:
-                self._scrolling = None
-                t_size = (t_size[0]+self.button_space, t)
-                
-        #if width of text_surf is smaller, the given w_min is used
+        if w_max and w>w_max:
+            if self._scrolls is None:
+                self._scrolls = ScrollingSurface()
+            self._scrolls.refresh(w_max-self.button_space, surf)
+            t_size = (w_max, h)
         else:
-            self._scrolling = None
-            t_size = (w_min+self.button_space, t)
+            self._scrolls = None
+            t_size = (w, h)
 
         # we prepare the sprite of the button if in normal state
-        self._button_image = pygame.transform.scale(self._button_image, t_size)
-        self._button_image.fill(colors[self._colors[0]])
+        self._normal = pygame.Surface(t_size)
+        self._normal.fill(colors[self._colors[0]])
 
         # we prepare the sprite of the button if in 'hover' state
-        self._hover_image = pygame.transform.scale(self._hover_image, t_size)
-        self._hover_image.fill(colors[self._colors[1]])
+        self._hovered = pygame.Surface(t_size)
+        self._hovered.fill(colors[self._colors[1]])
         pygame.draw.rect(
-            self._hover_image,
+            self._hovered,
             colors[self._colors[2]],
-            self._hover_image.get_rect(),
-            3
+            self._hovered.get_rect(),
+            self.button_space//4*3
             )
 
         # we prepare the sprite of the button if in clicked state
-        self._clicked_image = pygame.transform.scale(
-            self._clicked_image,
-            t_size
-            )
-        self._clicked_image.fill(colors[self._colors[2]])
+        self._clicked = pygame.Surface(t_size)
+        self._clicked.fill(colors[self._colors[2]])
 
         # Theese are infos property of the button used to make the animation
         # happen with "update"
-        self._hovered = self._clicked = False
+        self._is_hovered = self._is_clicked = False
             
         # These are infos property needed to make the Sprite class work 
         # as expected
-        self.image = self._button_image.copy()
+        self.image = self._normal.copy()
         self.rect = None
 
     def __bool__(self) -> bool:
@@ -1309,7 +1292,7 @@ class NormalButton(pygame.sprite.Sprite):
          - [bool] -> True if the button is in the clicked state
         """
 
-        return self._clicked
+        return self._is_clicked
 
     def get_rect(self) -> pygame.Rect:
         '''
@@ -1334,28 +1317,28 @@ class NormalButton(pygame.sprite.Sprite):
 
         # if the button is clicked, sets its image is in clicked state and
         # calls the function
-        if self._clicked:
-            self.image = self._clicked_image.copy()
+        if self._is_clicked:
+            self.image = self._clicked.copy()
 
         # if the button is only hovered, its image is in hover state
         elif hover:
-            self.image = self._hover_image.copy()
+            self.image = self._hovered.copy()
 
             # it plays a sound if it is the first time the button is overed
-            if not self._hovered:
-                self._hovered = True
+            if not self._is_hovered:
+                self._is_hovered = True
 
         # it could've be eampty, but this way we set the hovered setting
         # to false only one time
-        elif self._hovered:
-            self._hovered = False
+        elif self._is_hovered:
+            self._is_hovered = False
 
     def _set(self) -> None:
         """
         Initialize the image of the button in normal state
         """
 
-        self.image = self._button_image.copy()
+        self.image = self._normal.copy()
 
     def update(
         self,
@@ -1380,26 +1363,26 @@ class NormalButton(pygame.sprite.Sprite):
             # It checks if the button is clicked
             if hover and event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    self._clicked = True
+                    self._is_clicked = True
 
             # It checks if the clicked is released
-            elif self._clicked and event.type == pygame.MOUSEBUTTONUP:
+            elif self._is_clicked and event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
-                    if hover and not self.func is None:
+                    if hover and self.func is not None:
                         self.func()
-                    self._clicked = False
+                    self._is_clicked = False
             
         # It checks if the button is clicked
-        if not self._scrolling is None:
-            self._scrolling.update(event_list)
+        if self._scrolls is not None:
+            self._scrolls.update(event_list)
                     
         # initialize the image of the button as in normal state
         self._set()
         self._set_image(hover,pos)
 
-        # drawing the _scrolling text on the buttons if is needed
-        if not self._scrolling is None:
-            self._scrolling.draw(self.image)
+        # drawing the _scrolls text on the buttons if is needed
+        if not self._scrolls is None:
+            self._scrolls.draw(self.image)
 
     def draw(self, screen:pygame.Surface) -> None:
         """
@@ -1436,21 +1419,21 @@ class NormalButton(pygame.sprite.Sprite):
         - position [str]    -> key for get_rect() in standard pygame.Surface
         '''
         
-        t = self._button_image.get_rect().inflate(-self.button_space,-self.button_space)
+        t = self._normal.get_rect().inflate(-self.button_space,-self.button_space)
         
-        if self._scrolling is None:
+        if self._scrolls is None:
             #placing the text on the button
             
-            t = self._text_surf.get_rect(**{position:t.__getattribute__(position)})
-            self._button_image.blit(self._text_surf, t)
-            self._hover_image.blit(self._text_surf, t)
-            self._clicked_image.blit(self._text_surf, t)
+            r = self._surf.get_rect(**{position:t.__getattribute__(position)})
+            self._normal.blit(self._surf, r)
+            self._hovered.blit(self._surf, r)
+            self._clicked.blit(self._surf, r)
 
         else:
             #setting the scrolling text on the button
-            self._scrolling.init_rect(**{position:t.__getattribute__(position)})
+            self._scrolls.init_rect(**{position:t.__getattribute__(position)})
 
-        self.image = self._button_image
+        self.image = self._normal
 
     def copy(self) -> pygame.Surface:
         '''
@@ -1460,7 +1443,7 @@ class NormalButton(pygame.sprite.Sprite):
         - [pygame.Surface]  -> is the copy image of the button in normal state
         '''
 
-        return self._button_image.convert()
+        return self._normal.convert()
 
     def copy_alpha(self) -> pygame.Surface:
         '''
@@ -1471,9 +1454,9 @@ class NormalButton(pygame.sprite.Sprite):
                                 in normal state
         '''
 
-        return self._button_image.convert_alpha()
+        return self._normal.convert_alpha()
 
-    def copy_deactivated(self) -> pygame.Surface:
+    def copy_deactivated(self,alpha=150) -> pygame.Surface:
         '''
         It uses the Standard function for pygame.Surface
         
@@ -1483,7 +1466,7 @@ class NormalButton(pygame.sprite.Sprite):
         '''
 
         t = self.copy_alpha()
-        t.set_alpha(125)
+        t.set_alpha(alpha)
         return t
 
     def displayer(self) -> pygame.Rect:
@@ -1504,14 +1487,15 @@ class CheckButton(NormalButton):
 
     def __init__(
         self,
-        w:int,
         state:bool=False,
         bt_normal_color:str='gray',
         bt_hover_color:str='light_blue',
         bt_pressed_color:str='dark_blue',
         func:callable=None,
-        args:tuple=(),
-        utilities: Utilities=utilities
+        func_args:tuple=(),
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a check button. 
@@ -1539,28 +1523,24 @@ class CheckButton(NormalButton):
         # there is no need for text
         if func is None:
             super().__init__(
-                w,
-                pygame.Surface((1,1)),
-                0,
-                w+self.button_space,
                 bt_normal_color,
                 bt_hover_color,
                 bt_pressed_color,
                 self._select,
-                utilities
+                utilities= utilities,
+                *args,
+                **kwargs
                 )
         else:
             super().__init__(
-                w,
-                pygame.Surface((1,1)),
-                0,
-                w+self.button_space,
                 bt_normal_color,
                 bt_hover_color,
                 bt_pressed_color,
                 lambda *x:self._both(func,*x),
-                args,
-                utilities
+                func_args,
+                utilities,
+                *args,
+                **kwargs
                 )
 
         # This is info property of the button used to make the
@@ -1594,8 +1574,8 @@ class CheckButton(NormalButton):
         '''
 
         super().refresh(
-            w,
             pygame.Surface((1,1)),
+            w+self.button_space,
             0,
             w+self.button_space,
             colors=colors
@@ -1636,9 +1616,9 @@ class CheckButton(NormalButton):
         """
 
         if self._state:
-            self.image = self._clicked_image
+            self.image = self._clicked
         else:
-            self.image = self._button_image
+            self.image = self._normal
 
 class RadioButton(CheckButton):
     # pygame sprite to handle how a radiobutton should behave
@@ -1652,15 +1632,16 @@ class RadioButton(CheckButton):
 
     def __init__(
         self,
-        w:int,
         value:str,
         state:bool=False,
         bt_normal_color:str='gray',
         bt_hover_color:str='light_blue',
         bt_pressed_color:str='dark_blue',
         func:callable=None,
-        args:tuple=(),
-        utilities: Utilities=utilities
+        func_args:tuple=(),
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a radio button. 
@@ -1690,31 +1671,32 @@ class RadioButton(CheckButton):
         # there is no need for thext
         if func is None:
             super().__init__(
-                w,
                 state,
                 bt_normal_color,
                 bt_hover_color,
                 bt_pressed_color,
                 func,
-                args,
-                utilities
+                utilities= utilities,
+                *args,
+                **kwargs
                 )
         else:
             super().__init__(
-                w,
                 state,
                 bt_normal_color,
                 bt_hover_color,
                 bt_pressed_color,
                 lambda *x:func(self._value,*x),
-                args,
-                utilities
+                func_args,
+                utilities,
+                *args,
+                **kwargs
                 )
         
         # This is info property of the button used to make the animation
         # happen with "update"
         self._value = value
-        self._buttons = None
+        self._buttons:list[RadioButton] = None
 
     def __str__(self) -> str:
         """
@@ -1742,7 +1724,7 @@ class RadioButton(CheckButton):
                                                 have the "radio" meaning
         """
 
-        self._buttons:list[RadioButton] = buttons
+        self._buttons= buttons
 
     def getValueStateRB(self) -> dict[str,bool]:
         """
@@ -1779,12 +1761,13 @@ class ImageButton(NormalButton):
 
     def __init__(
         self,
-        image:pygame.Surface,
         bt_hover_color:str='light_blue',
         bt_clicked_color:str='dark_blue',
         func:callable=None,
-        args:tuple=(),
-        utilities: Utilities=utilities
+        func_args:tuple=(),
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a button with an image. 
@@ -1808,20 +1791,23 @@ class ImageButton(NormalButton):
         # initializing the NormalButton class.
         # It will be a little box: there is no need for thext
         super().__init__(
-            1,
-            image,
             func=func,
-            args=args,
-            utilities=utilities
+            func_args=func_args,
+            utilities=utilities,
+            *args,
+            **kwargs
             )
 
         self._colors = (bt_hover_color, bt_clicked_color)
 
-        self._refresh(image, utilities.colors)
-
-        #this just annoies me
-        #del self.get_text_rect #why can't I do it?
         self.refresh = self._refresh
+
+    def text_rect(self) -> None:
+        """
+        THIS FUNCTION IS USELESS
+        """
+
+        return
 
     def _refresh(self, image:pygame.Surface, colors: Colors=utilities.colors):
         '''
@@ -1835,7 +1821,7 @@ class ImageButton(NormalButton):
 
         #setting the actual images of the button
         bt_sizes=image.get_size()
-        self._button_image = image.copy()
+        self._normal = image.copy()
 
         mask = pygame.mask.from_surface(image).to_surface().convert_alpha()
         mask.set_colorkey((0,0,0))
@@ -1847,30 +1833,29 @@ class ImageButton(NormalButton):
         tem.blit(sc,t,None,pygame.BLEND_RGBA_MULT)
 
         # transparent color to blit over the image
-        self._hover_image = image.copy()
-        self._hover_image.blit(tem,t)
+        self._hovered = image.copy()
+        self._hovered.blit(tem,t)
 
         tem = mask.copy()
         sc.fill(colors[self._colors[1],50])
         tem.blit(sc,t,None,pygame.BLEND_RGBA_MULT)
     
         # transparent color to blit over the image, but it is different
-        self._clicked_image = image.copy()
-        self._clicked_image.blit(tem,t)
+        self._clicked = image.copy()
+        self._clicked.blit(tem,t)
 
         # These are infos property needed to make the Sprite class work as expecter
-        self.image = self._button_image
+        self.image = self._normal
         self.rect = None
 
     @classmethod
     def allImages(
         cls,
-        normal_image:pygame.Surface,
-        hovered_image:pygame.Surface,
-        clicked_image:pygame.Surface,
         func:callable=None,
-        args:tuple=(),
-        utilities: Utilities=utilities
+        func_args:tuple=(),
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a button with an image for each state.
@@ -1893,12 +1878,13 @@ class ImageButton(NormalButton):
         '''
 
         t = cls(
-            normal_image,
             func=func,
-            args=args,
-            utilities=utilities)
-        t.__refresh(normal_image, hovered_image, clicked_image)
+            func_args=func_args,
+            utilities=utilities,
+            *args,
+            **kwargs)
         t.refresh = t.__refresh
+        return t
     
     def __refresh(
         self,
@@ -1924,22 +1910,16 @@ class ImageButton(NormalButton):
         clic_size = clicked_image.get_size()
 
         #setting the image for the button in normal state
-        self._button_image = normal_image.copy()
+        self._normal = normal_image
 
         #setting the image for the button in hover state
-        if norm_size == hov_size:
-            self._hover_image = hovered_image.copy()
-        else:
-            self._hover_image = pygame.transform.smoothscale(hovered_image.copy(),norm_size)
+        self._hovered = hovered_image
 
         #setting the image for the button in clicked state
-        if norm_size == clic_size:
-            self._clicked_image = clicked_image.copy()
-        else:
-            self._clicked_image = pygame.transform.smoothscale(clicked_image.copy(),norm_size)
+        self._clicked = clicked_image
 
         # These are infos property needed to make the Sprite class work as expecter
-        self.image = self._button_image
+        self.image = self._normal
         self.rect = None
    
 
@@ -1965,8 +1945,6 @@ class LittleMenu(pygame.sprite.Sprite):
 
     def __init__(
         self,
-        font:pygame.font.Font,
-        length_min:int=0,
         bt_hover_color:str='gray',
         bt_clicked_color:str='white',
         utilities: Utilities=utilities
@@ -1991,78 +1969,31 @@ class LittleMenu(pygame.sprite.Sprite):
         #setting initial value of the object
         self._active = False
         self._copy = self._cut = self._paste = None
-        
-        #getting the text surfaces
-        copy_text = font.render(
-            "Copia",
-            True,
-            utilities.colors["black"]
-            )
-        cut_text = font.render(
-            "Taglia",
-            True,
-            utilities.colors["black"]
-            )
-        paste_text = font.render(
-            "Incolla",
-            True,
-            utilities.colors["black"]
-            )
-
-        #the max lenght to get a nice-looking little menu
-        w=max(
-            copy_text.get_width(),
-            cut_text.get_width(),
-            paste_text.get_width(),
-            length_min
-            )
-
-        #adding some space upper for the text
-        h=copy_text.get_height()+NormalButton.button_space
-
-        #settign the image for each option of the menu
-        rectangle = pygame.surface.Surface((w,h))
-        sz = (w/2,h/2)
-        rectangle.fill(utilities.colors["background"])
-
-        inactiveCopy = rectangle.copy()
-        inactiveCopy.blit(copy_text,copy_text.get_rect(center=sz))
-
-        inactiveCut = rectangle.copy()
-        inactiveCut.blit(cut_text,cut_text.get_rect(center=sz))
-        inactivePaste = rectangle
-        inactivePaste.blit(paste_text,paste_text.get_rect(center=sz))
 
         #defining each button for the little menu
         self._activeCopy = ImageButton(
-            inactiveCopy,
             bt_hover_color,
             bt_clicked_color,
             self.copy_func,
             utilities=utilities
             )
-        self._activeCopy.init_rect(x=0,y=0)
 
         self._activeCut = ImageButton(
-            inactiveCut,
             bt_hover_color,
             bt_clicked_color,
             self.cut_func,
             utilities=utilities
             )
-        self._activeCut.init_rect(x=0,y=h)
 
         self._activePaste = ImageButton(
-            inactivePaste,
             bt_hover_color,
             bt_clicked_color,
             self.paste_func,
             utilities=utilities
             )
-        self._activePaste.init_rect(x=0,y=h*2)
         
-        self.image = pygame.surface.Surface((w,h*3))
-        self.rect = self.image.get_rect()
+        self.image:pygame.Surface = None
+        self.rect:pygame.Rect = None
 
     def __bool__(self) -> bool:
         """
@@ -2188,14 +2119,8 @@ class LittleMenu(pygame.sprite.Sprite):
         pygame.mouse.set_cursor(*pygame.cursors.Cursor(0))
 
         #setting the position of the little menu
-        if x+self.rect.w>screen_rect.w:
-            self.rect.x=x-self.rect.w
-        else:
-            self.rect.x=x
-        if y+self.rect.h>screen_rect.h:
-            self.rect.y=y-self.rect.h
-        else:
-            self.rect.y=y
+        self.rect.x=x-self.rect.w*(x+self.rect.w>screen_rect.w)
+        self.rect.y=y-self.rect.h*(y+self.rect.h>screen_rect.h)
 
         #saving the given function
         self._copy = copy
@@ -2445,8 +2370,6 @@ class TextBox(pygame.sprite.Sprite):
 
     def __init__(
         self,
-        w:int,
-        font:pygame.font.Font,
         initial_text:str="",
         empty_text:str="",
         max_char:int=256,
@@ -2458,8 +2381,10 @@ class TextBox(pygame.sprite.Sprite):
         text_color:str="black",
         rule=None,
         func=None,
-        args=(),
-        utilities: Utilities=utilities
+        func_args=(),
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a the Box where the user can type text
@@ -2495,36 +2420,28 @@ class TextBox(pygame.sprite.Sprite):
         '''
 
         # initializing the sprite class
-        super().__init__()
+        super().__init__(*args,**kwargs)
         self._colors = utilities.colors
         self._decoder = utilities.decoder
 
-        #getting the height of the box
-        ww,h = font.size("ML")
-
         # setting all the variables which will be used 
-        self._font = font
+        self._font:pygame.font.Font = None
         self._max_char = max_char
         self._empty_text = empty_text
         if empty_text:
-            self._empty_surf = font.render(empty_text,True,utilities.colors[text_color])
-            self._empty_surf.set_alpha(90)
+            self._empty_surf:pygame.Surface = None
         else:
             self._empty_surf = False
-        self._bar = font.render("|", True, utilities.colors[bar_color])
+        self._bar:pygame.Surface = None
         self._rule = rule
 
         #the dimensione of thesel_rect isn't important
         # -> it will be streached anyway
-        self._sel_rect = pygame.Surface((5, h),pygame.SRCALPHA)
-        self._sel_rect.fill(utilities.colors[selected_text_color])
-        self._sel_rect.set_alpha(50) #to show the selected chars in the box
+        self._sel_rect = pygame.Surface((1,1),pygame.SRCALPHA)
+        self._sel_rect.fill(utilities.colors[selected_text_color,50])
 
         #This Surface has to be long enought to keep all the text
-        self._text_rect = pygame.Surface(
-            ((ww+3)*max_char, h+self.button_space),
-            pygame.SRCALPHA
-            )
+        self._text_rect = pygame.Surface((1,1), pygame.SRCALPHA)
         self._text_rect.fill(utilities.colors.transparent)
 
         #these are value that I use much
@@ -2544,20 +2461,20 @@ class TextBox(pygame.sprite.Sprite):
         if func is None:
             self.func = None
         else:
-            self.func=utilities.superfunc(func, args)
+            self.func=utilities.superfunc(func, func_args)
         
         #setting the text of the box
-        self._text = ""
-        self._text_surf = []
+        self._text = initial_text
+        self._text_surf:list[pygame.Surface] = []
         self._changed = False
-        if initial_text:
-            self.addText(initial_text)
+        # if initial_text:
+        #     self.addText(initial_text)
         self._next=None
         self._prev=None
         # These are infos property needed to make the Sprite class work
         # as expecter
-        self.image = pygame.Surface((w, h+self.button_space))
-        self.rect = None
+        self.image:pygame.Surface = None
+        self.rect=pygame.Rect(0,0,1,1)
 
     def refresh(
         self,
@@ -2578,7 +2495,7 @@ class TextBox(pygame.sprite.Sprite):
         ww,h = font.size("LM")
 
         # setting all the variables which will be used 
-        if self._empty_surf:
+        if self._empty_text:
             self._empty_surf = font.render(
                 self._empty_text,
                 True,
@@ -2589,7 +2506,7 @@ class TextBox(pygame.sprite.Sprite):
 
         #the dimensione of thesel_rect isn't important
         # -> it will be streached anyway
-        self._sel_rect = pygame.transform.scale(self._sel_rect,(5,h))
+        self._sel_rect = pygame.transform.scale(self._sel_rect,(5, h))
 
         #This Surface has to be long enought to keep all the text
         self._text_rect = pygame.transform.scale(
@@ -2599,7 +2516,7 @@ class TextBox(pygame.sprite.Sprite):
 
         #these are the previous and nextsizes for all teh rendered text
         now_l,_ = font.size(self._text)
-        pre_l,_ = self._font.size(self._text)
+        pre_l,_ = self._font.size(self._text) if self._font else font.size(self._text)
         
         #setting the text of the box
         #k would be set to 0 when the whole text is replaced
@@ -2615,10 +2532,7 @@ class TextBox(pygame.sprite.Sprite):
 
         # These are infos property needed to make the
         # Sprite class work as expecter
-        self.image = pygame.transform.scale(
-            self.image,
-            (w, h+self.button_space)
-            )
+        self.image = pygame.Surface((w, h+self.button_space))
         self.rect = None
 
     def __bool__(self) -> bool:
@@ -3597,7 +3511,6 @@ class TextBox(pygame.sprite.Sprite):
         self._next = __o
 
 class Drop(pygame.sprite.Sprite):
-    center = "center"
 
     def __init__(self,
         box:TextBox,
@@ -3628,7 +3541,7 @@ class Drop(pygame.sprite.Sprite):
         self.rect = None
         self.image = pygame.Surface((self.length,self.h*quantity),pygame.SRCALPHA)
         self.long_image = pygame.Surface((1,1),pygame.SRCALPHA)
-        self.v_bar = VerticalBar(4,40,30,15,bar_color="dark_gray")
+        self.v_bar = VerticalBar(bar_color="dark_gray")
         self.bar = None
         self.g = pygame.sprite.Group()
 
@@ -3718,24 +3631,26 @@ class Drop(pygame.sprite.Sprite):
         findet = filter(lambda y:self._finder(str(self.box),y),self.data)
         if findet != self.findet:
             self.findet = findet
+            self.buttons.clear()
 
-            self.buttons = [
-                NormalButton(
-                    self.length-self.h//2,
+            x=y=0
+            for f in findet:
+                t = NormalButton(
+                        bt_normal_color=self.colors[2],
+                        bt_hover_color=self.colors[3],
+                        bt_pressed_color=self.colors[3],
+                        func=self.box.replaceText,
+                        func_args=(f,)
+                )
+                t.refresh(
                     self.font.render(f,True,self.utilities.colors[self.colors[0]]),
                     self.length-self.h//2,
-                    bt_normal_color=self.colors[2],
-                    bt_hover_color=self.colors[3],
-                    bt_pressed_color=self.colors[3],
-                    func=self.box.replaceText,
-                    args=(f,)
-                ) for f in findet
-                ]
-            x=y=0
-            for bt in self.buttons:
-                y+=bt.init_rect(x=x,y=y).h
-                bt.text_rect(self.center)
-            
+                    self.length-self.h//2
+                    )
+                y+=t.init_rect(x=x,y=y).h
+                t.text_rect()
+                self.buttons.append(t)
+
             self.long_image = pygame.transform.scale(self.long_image, (self.length,y))
             
             if len(self.buttons)>1:
@@ -3875,28 +3790,25 @@ class RectengleText(pygame.sprite.Sprite):
 
     def __init__(
         self,
-        width:int|float,
         rect_color:str,
         rect_alpha:int,
-        font:pygame.font.Font,
         text:str,
         text_color:str,
-        colors:Colors=utilities.colors
+        *args,
+        **kwargs
         ) -> None:
         """
         This function initializes the Rect by the refresh function
         """
 
         #initializes the sprite
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
         #base information needed for colorizing
         self.colors = (rect_color,rect_alpha,text_color)
         self.text = text
+        self.image:pygame.Surface = None 
         self.rect = pygame.Rect(0,0,0,0)
-
-        #actually defining the object
-        self.refresh(width, font, colors)
 
     def refresh(
         self,
@@ -4055,14 +3967,9 @@ class VerticalBar(pygame.sprite.Sprite):
 
     def __init__(
         self,
-        window_w:float,
-        window_h:float,
-        scroll_len:float,
-        real_len:float,
         bt_hover_color:str='light_blue',
         bt_clicked_color:str='dark_blue',
         bar_color:str="gray",
-        start_bar:float=0,
         utilities: Utilities=utilities
         ) -> None:
         '''
@@ -4096,59 +4003,40 @@ class VerticalBar(pygame.sprite.Sprite):
 
         #setting the buttons
         self._up = ImageButton(
-            pygame.transform.smoothscale(
-                self._up_i,
-                (window_w, window_w)
-                ),
             bt_hover_color,
             bt_clicked_color,
             utilities=utilities
             )
-        t = self._up.init_rect(x=0, y=0)
         self._down = ImageButton(
-            pygame.transform.smoothscale(
-                self._down_i,
-                (window_w,window_w)
-                ),
             bt_hover_color,
             bt_clicked_color,
             utilities=utilities
             )
-        self._down.init_rect(x=0, bottom=window_h)
 
         #setting all the lenght values
-        full_len = window_h- 2*t.w
-        bar_len = full_len*real_len/scroll_len
-        self._len = full_len-bar_len
-        if self._len > int(self._len):
-            self._len = int(self._len+1)
-        self._scroll_rate = (scroll_len-real_len)/(self._len)
+        self._len = 10
+        self._scroll_rate = 1
 
         #setting the values for the moving bar
-        self._start = t.w
+        self._start = 0
         self._translate = 0
-        if 0<start_bar/self._scroll_rate<self._len:
-            self.minus(start_bar/self._scroll_rate)
 
         #setting the moving button
-        self._bar_r = pygame.Surface((window_w,bar_len)).convert()
-        self._bar_r.fill(utilities.colors[bar_color])
+        self._bar_r = pygame.Surface((1,1))
         self._bar = ImageButton(
-            self._bar_r,
             bt_hover_color,
             bt_clicked_color,
             utilities=utilities
             )
-        self._bar.init_rect(x=0,y=self._start+self._translate)
         self._g = pygame.sprite.Group(self._up, self._down, self._bar)
 
         #setting other values
         self._key_clicked = [False,False]
         self._bar_color = bar_color
-        self._window_h = window_h
+        self._window_h = 10
 
         #setting the image
-        self.image = pygame.Surface((window_w,window_h)).convert_alpha()
+        self.image = pygame.Surface((1,1)).convert_alpha()
         self.rect = None
 
     def __float__(self) -> float:
@@ -4395,12 +4283,14 @@ class VerticalBar(pygame.sprite.Sprite):
             window_h=screen_rect.h
 
         t = cls(
+            utilities=utilities
+            )
+        t.refresh(
             cls.button_length,
             window_h,
             scroll_len,
             screen_rect.h,
-            utilities=utilities
-            )
+            colors=utilities.colors)
         t.init_rect(right=screen_rect.w, y=window_y)
         t.refresh, t._refresh = t._refresh, t.refresh
         return t
@@ -5396,10 +5286,8 @@ if __name__ == "__main__":
 
             #and the font of the exception
             font = pygame.font.SysFont(self.utilities.corbel, screen_rect.h//6,True)
-            text = ScrollingText(
-                screen_rect.w,font.render(exception,True,self.utilities.colors["dark_green"]),
-                1
-                )
+            text = ScrollingSurface()
+            text.refresh(screen_rect.w,font.render(exception,True,self.utilities.colors["dark_green"]))
             text.init_rect(x = screen_rect.w/30, y = screen_rect.w/30)
 
             l_font = pygame.font.SysFont(self.utilities.corbel, screen_rect.h//12)
@@ -5514,8 +5402,7 @@ if __name__ == "__main__":
 
             settings = "SETTINGS"
             settings_s = [None,None]
-            explain_b = "Seleziona quali di questi dati si vuole tenere la drop table"
-            explain_b = RectengleText(100,"gray",0,font,explain_b,"black")
+            explain_b = RectengleText("gray",0,"Seleziona quali di questi dati si vuole tenere la drop table","black")
             
             b = [i=="1" for i in self.utilities.settings["drop"]]
             
@@ -5523,22 +5410,22 @@ if __name__ == "__main__":
                 b[i]=not b[i]
 
             check_b = tuple(
-                [CheckButton(4,j,func=change,args=(b,i)),None,None]
+                [CheckButton(j,func=change,func_args=(b,i)),None,None]
                 for i,j in enumerate(b)
             )
             
-            explain_t = "Scrivi come vuoi rinominare ciascun file .mp3. Inserisci tra parentesi graffe {} i metadati del file audio scelti tra: "
+            __explain_t = "Scrivi come vuoi rinominare ciascun file .mp3. Inserisci tra parentesi graffe {} i metadati del file audio scelti tra: "
             for ar in Song.name():
-                explain_t+=f"'{ar}'; "
-            explain_t = explain_t[:-2]+ ". Seleziona il box a fianco per non rinominare la canzone nel caso manchino dei metadati"
-            explain_t = RectengleText(100,"gray",0,font,explain_t,"black")
+                __explain_t+=f"'{ar}'; "
+            __explain_t = __explain_t[:-2]+ ". Seleziona il box a fianco per non rinominare la canzone nel caso manchino dei metadati"
+            explain_t = RectengleText("gray",0,__explain_t,"black")
+            del __explain_t
 
             def invert():
                 self.utilities.settings["del_pics"] = int(not self.utilities.settings["del_pics"])
 
-            check_d = CheckButton(4,self.utilities.settings["del_pics"],func=invert)
-            explain_d = "Seleziona quest'opzione per eliminare le immagini in automatico"
-            explain_d = RectengleText(100,"gray",0,font,explain_d,"black")
+            check_d = CheckButton(self.utilities.settings["del_pics"],func=invert)
+            explain_d = RectengleText("gray",0,"Seleziona quest'opzione per eliminare le immagini in automatico","black")
 
             example = self.utilities.settings["rename"]
             
@@ -5546,19 +5433,17 @@ if __name__ == "__main__":
                 self.utilities.booleans[1]=True
                 self.utilities.settings['check_None'] = int(not self.utilities.settings['check_None'])
 
-            check_t = CheckButton(4,self.utilities.settings["check_None"],func=inv_res)
-            t = TextBox(4,font,example,"Lascia vuoto per non rinominare",writable=True,rule = self.utilities.filename)
-            t.init_rect(x=0,y=0)
+            check_t = CheckButton(self.utilities.settings["check_None"],func=inv_res)
+            t = TextBox(example,"Lascia vuoto per non rinominare",writable=True,rule = self.utilities.filename)
             example_s = [None,None]
 
             q = "Torna indietro"
-            s = pygame.Surface((1,1))
-            q_b = NormalButton(3,s, func=self.utilities.booleans.breaker)
+            q_b = NormalButton(func=self.utilities.booleans.breaker)
 
-            little_menu = LittleMenu(font)
+            little_menu = LittleMenu()
             g = pygame.sprite.Group(c[0] for c in check_b)
             g.add(check_t,t,q_b, explain_t,explain_b,explain_d,check_d)
-            del s, ar
+            del ar
 
             self.utilities.booleans[1] = True
             while self.utilities.booleans[1]:
@@ -5617,7 +5502,7 @@ if __name__ == "__main__":
                 explain_d.refresh(width-h/2*3,font)
                 bottom = explain_d.init_rect(x=r.right+h/2,top=r.top).bottom
 
-                q_b.refresh(0,font.render(q,True,self.utilities.colors["black"]))
+                q_b.refresh(font.render(q,True,self.utilities.colors["black"]))
                 q_b.init_rect(centerx=centerx,y=bottom+button_heigh)
                 q_b.text_rect("center")
 
@@ -5711,7 +5596,7 @@ if __name__ == "__main__":
 
         def add_image(self, song:Song, description:str, i:bytes, img:pygame.Surface, images:list, g:pygame.sprite.Group):
             song.images = (description,i,"jpeg")
-            images.append((description,i,img,RectengleText(100,"black",50,pygame.font.SysFont("corbel",2),description,"black"),ImageButton(pygame.Surface((1,1)),func=self.del_image,args=(song, description, images))))
+            images.append((description,i,img,RectengleText("black",50,description,"black"),ImageButton(func=self.del_image,func_args=(song, description, images))))
             g.add(images[-1][-2:])
             self.utilities.booleans[1]=True
 
@@ -5728,10 +5613,10 @@ if __name__ == "__main__":
                     image = pygame.image.load(osabspath(str(what)))
                     bts = open(osabspath(str(what)),"rb").read()
                     if not self.find:
-                        self.find.append(TextBox(10,pygame.font.SysFont("corbel",2),"","Descrizione"))
+                        self.find.append(TextBox("","Descrizione"))
                         self.find[0].init_rect()
                         g_findet.add(self.find[0])
-                    self.find.append((image,ImageButton(pygame.Surface((1,1)),func = self.sel_image, args=(song,bts,image,images,g))))
+                    self.find.append((image,ImageButton(pygame.Surface((1,1)),func = self.sel_image, func_args=(song,bts,image,images,g))))
                     g_findet.add(self.find[-1][1])
                     self.utilities.booleans[1]=True
                     return
@@ -5762,8 +5647,7 @@ if __name__ == "__main__":
             event_list.extend(pygame.event.get())
             
             if not self.find:
-                self.find.append(TextBox(10,pygame.font.SysFont("corbel",2),"","Descrizione"))
-                self.find[0].init_rect()
+                self.find.append(TextBox("","Descrizione"))
                 g_findet.add(self.find[0])
             
             event_list.extend(pygame.event.get())
@@ -5780,7 +5664,7 @@ if __name__ == "__main__":
 
                 try:
                     image = image.get_raw_data()
-                    self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(s,func = self.sel_image, args=(song,image,k,images,g))))
+                    self.find.append(((k:=pygame.image.load(self.ioBytesIO(image))),ImageButton(func = self.sel_image, func_args=(song,image,k,images,g))))
                 except:
                     continue
 
@@ -5862,15 +5746,14 @@ if __name__ == "__main__":
                 s = pygame.Surface((1,1))
                 short = pygame.Surface((1,1),pygame.SRCALPHA)
                 long=pygame.Surface((1,1),pygame.SRCALPHA)
-                t = (100,"black",50,f)
-                tt = "black"
+                t = "black"
                 search = "Cerca"
                 back = "Torna indietro"
                 
-                little_menu = LittleMenu(f)
+                little_menu = LittleMenu()
 
                 whole_data = {(k,v):"" if (z:=getattr(song,k)) is None else z for k,v in song.name().items()}
-                rectangles = {k:[None,None,RectengleText(*t,v,tt)] for (_,k),v in whole_data.items() if isinstance(v,str)}
+                rectangles = {k:[None,None,RectengleText(t,50,v,t)] for (_,k),v in whole_data.items() if isinstance(v,str)}
                 g = pygame.sprite.Group(r for *_,r in rectangles.values())
                 g_findet = pygame.sprite.Group()
 
@@ -5894,20 +5777,18 @@ if __name__ == "__main__":
                                 song.del_images(d)
                                 return
                             
-                            images.append((d,i,img,RectengleText(*t,d,tt),ImageButton(s,func=self.del_image,args=(song, d, images))))
-                            images[-1][-2].init_rect()
+                            images.append((d,i,img,RectengleText(t,50,d,t),ImageButton(func=self.del_image,func_args=(song, d, images))))
                             g.add(images[-1][-2:])
                             del d,i,l,img
                         del kk,k,v
                         break
                 
-                search_t = TextBox(10,f,"",search)
-                search_t.init_rect()
-                search_b = NormalButton(0,s,func=self.search,args=(song,search_t,images,g, g_findet))
-                back_b = NormalButton(0,s,func=self.utilities.booleans.breaker)
+                search_t = TextBox("",search)
+                search_b = NormalButton(func=self.search,func_args=(song,search_t,images,g, g_findet))
+                back_b = NormalButton(func=self.utilities.booleans.breaker)
                 g.add(search_b,search_t)
 
-                del f,s,t,tt,whole_data
+                del f,s,t,whole_data
 
                 self.utilities.booleans[1] = True
                 while self.utilities.booleans[1]:
@@ -5944,7 +5825,7 @@ if __name__ == "__main__":
                         y=t.bottom+button_half
                         del img,t,xx
 
-                    search_b.refresh(0,font.render(search,True,black))
+                    search_b.refresh(font.render(search,True,black),0)
                     t = search_b.init_rect()
                     search_t.refresh(screen_rect.w-(t.w+button_half*5),font)
                     t = search_t.init_rect(x=x,y=y)
@@ -5962,7 +5843,7 @@ if __name__ == "__main__":
                                 ib.refresh(pygame.transform.scale(img,w))
                             y = ib.init_rect(x=x,y=y).bottom+button_half
 
-                    back_b.refresh(0,font.render(back,True,black))
+                    back_b.refresh(font.render(back,True,black),0)
                     t = back_b.init_rect(centerx=screen_rect.w/2,centery=screen_rect.h-button_heigh)
                     back_b.text_rect()
 
@@ -6079,18 +5960,17 @@ if __name__ == "__main__":
                 start = "Start"
                 options = "Options"
 
-                v_bar = VerticalBar(5,200,100,50)
-                v_bar.init_rect(x=0,y=0)
+                v_bar = VerticalBar()
                 bar = None
 
                 max_lenght = 20_000
                 short_s = [pygame.Surface((0,0),pygame.SRCALPHA),None]
                 title_s = [None,None]
                 if wait:
-                    start_b = NormalButton(0,short_s[0],func=self.run)
+                    start_b = NormalButton(func=self.run)
                 else:
-                    start_b = NormalButton(0,short_s[0],func=self.fastrun)
-                options_b = NormalButton(0,short_s[0],func=self.options)
+                    start_b = NormalButton(func=self.fastrun)
+                options_b = NormalButton(func=self.options)
                 g = pygame.sprite.Group(options_b,start_b)
 
                 self.utilities.booleans[1]=True
@@ -6139,10 +6019,10 @@ if __name__ == "__main__":
                         y+=text_heigh
 
                     w = max(font.size(options)[0],font.size(start)[0])
-                    options_b.refresh(w,font.render(options,True,black))
+                    options_b.refresh(font.render(options,True,black),w)
                     r = options_b.init_rect(centerx=screen_rect.w//3,centery=screen_rect.h-text_heigh)
                     options_b.text_rect()
-                    start_b.refresh(w,font.render(start,True,black))
+                    start_b.refresh(font.render(start,True,black),w)
                     start_b.init_rect(centerx=screen_rect.w//3*2,centery=r.centery)
                     start_b.text_rect()
 
@@ -6264,8 +6144,8 @@ if __name__ == "__main__":
                 c.work = work
 
                 t = pygame.Surface((1,1))
-                stop_b = NormalButton(0,t,func=s)
-                cont_b = NormalButton(0,t,func=c)
+                stop_b = NormalButton(func=s)
+                cont_b = NormalButton(func=c)
 
                 self.utilities.booleans[1] = True
                 while self.utilities.booleans[1]:
@@ -6372,7 +6252,7 @@ if __name__ == "__main__":
                 g = pygame.sprite.Group()
                 g_super = pygame.sprite.Group()
                 g_diff = pygame.sprite.Group()
-                little_menu = LittleMenu(t)
+                little_menu = LittleMenu()
                 all_boxes = []
                 all_drops = []
                 v_bar = VerticalBar.scroller(pygame.Rect(0,0,10,100),150)
@@ -6393,16 +6273,16 @@ if __name__ == "__main__":
                 pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(4,8),(12,8),(14,10),(24,10),(24,14),(8,14)),2)
                 pygame.draw.polygon(folder,self.utilities.colors['black'],((4,24),(8,14),(28,14),(20,24)),2)
 
-                player_b = ImageButton(s,func =lambda: self.utilities.music.start(self.list_mp3[starting].get_Sound()))
-                stopper_b = ImageButton(s,func = self.utilities.music.stop)
-                upper_b = ImageButton(s,func = self.utilities.music.up)
-                downer_b = ImageButton(s,func = self.utilities.music.down)
-                folder_b = ImageButton(s,func=lambda: self.explorer(osjoin(self.list_mp3[starting].path,self.list_mp3[starting].file)))
+                player_b = ImageButton(func =lambda: self.utilities.music.start(self.list_mp3[starting].get_Sound()))
+                stopper_b = ImageButton(func = self.utilities.music.stop)
+                upper_b = ImageButton(func = self.utilities.music.up)
+                downer_b = ImageButton(func = self.utilities.music.down)
+                folder_b = ImageButton(func=lambda: self.explorer(osjoin(self.list_mp3[starting].path,self.list_mp3[starting].file)))
 
-                prev_b = NormalButton(0,s,func=self.__prev)
-                follow_b = NormalButton(0,s,func=self.__follow)
-                stop_b = NormalButton(0,s,func=self.__stop)
-                refresh_b = NormalButton(0,s,func=self.__refresh)
+                prev_b = NormalButton(func=self.__prev)
+                follow_b = NormalButton(func=self.__follow)
+                stop_b = NormalButton(func=self.__stop)
+                refresh_b = NormalButton(func=self.__refresh)
                 g_diff.add(prev_b,follow_b,stop_b,refresh_b,player_b,stopper_b,upper_b,downer_b,folder_b)
 
                 droppable:dict[str,tuple[Drop|None,TextBox,list[pygame.Surface,pygame.Rect]]] = {}
@@ -6411,9 +6291,8 @@ if __name__ == "__main__":
 
                 for d,(k,v) in zip(self.utilities.settings["drop"],Song.droppable().items()):
 
-                    b=TextBox(2,t,empty_text=v)
+                    b=TextBox(empty_text=v)
                     all_boxes.append(b)
-                    b.init_rect()
                     if int(d):
                         droppable[k]=([v,None,None],Drop(b,k,t,2),b)
                         droppable[k][-2].init_rect()
@@ -6426,22 +6305,16 @@ if __name__ == "__main__":
                 for k,v in Song.non_droppable().items():
                     
                     if "num" in k:
-                        b = (TextBox(2,t,empty_text=nr_tot[0],max_char=6,rule=self.isdigit),TextBox(2,t,empty_text=nr_tot[1],max_char=6,rule=self.isdigit))
+                        b = (TextBox(empty_text=nr_tot[0],max_char=6,rule=self.isdigit),TextBox(empty_text=nr_tot[1],max_char=6,rule=self.isdigit))
                         all_boxes.extend(b)
-                        for bb in b:
-                            bb.init_rect()
                         g.add(*b)
                         boxes[k]=([v,None,None],b)
-                        del bb
                         
                     elif "date" in k:
-                        b = (TextBox(2,t,empty_text=calendar[0],max_char=4,rule=self.isdigit),TextBox(2,t,empty_text=calendar[1],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[2],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[3],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[4],max_char=2,rule=self.isdigit),TextBox(2,t,empty_text=calendar[5],max_char=2,rule=self.isdigit))
+                        b = (TextBox(empty_text=calendar[0],max_char=4,rule=self.isdigit),TextBox(empty_text=calendar[1],max_char=2,rule=self.isdigit),TextBox(empty_text=calendar[2],max_char=2,rule=self.isdigit),TextBox(empty_text=calendar[3],max_char=2,rule=self.isdigit),TextBox(empty_text=calendar[4],max_char=2,rule=self.isdigit),TextBox(empty_text=calendar[5],max_char=2,rule=self.isdigit))
                         all_boxes.extend(b)
-                        for bb in b:
-                            bb.init_rect()
                         g.add(*b)
                         boxes[k]=([v,None,None],b)
-                        del bb
                     
                     elif "comments" == k:
                         def __del(list_boxes:list[pygame.sprite.Sprite],all_boxes:list = all_boxes):
@@ -6453,22 +6326,24 @@ if __name__ == "__main__":
                                 x.kill()
                         
                         def __add(list_boxes:list[pygame.sprite.Sprite],x,y,space,w,ww,font,this_b,g:pygame.sprite.Group=g,all_boxes = all_boxes):
-                            list_boxes.append(TextBox(w,font,"",desc,64))
+                            list_boxes.append(TextBox("",desc,64))
+                            list_boxes[-1].refresh(w,font)
                             r = list_boxes[-1].init_rect(x=x,y=y)
-                            list_boxes.append(TextBox(ww,font,"",content,1024))
+                            list_boxes.append(TextBox("",content,1024))
+                            list_boxes[-1].refresh(ww,font)
                             list_boxes[-1].init_rect(x=r.right+space,y=y)
                             g.add(list_boxes[-2:])
                             all_boxes.extend(list_boxes[-2:])
                             this_b.func.args=(*this_b.func.args[:2],r.bottom+space/2,*this_b.func.args[3:])
                             
                         c=[]
-                        b = (NormalButton(0,s,func=__add, args=(c,)),NormalButton(0,s,func=__del, args=(c,)),c)
+                        b = (NormalButton(func=__add, func_args=(c,)),NormalButton(func=__del, func_args=(c,)),c)
                         g.add(*b[:2])
                         boxes[k]=([v,None,None],b)
                         del __del,__add
 
                     elif "images" == k:
-                        b = NormalButton(0,s,func=lambda:self.edpics(self.list_mp3[starting]))
+                        b = NormalButton(func=lambda:self.edpics(self.list_mp3[starting]))
                         g.add(b)
                         boxes[k]=([v,None,None],b)
 
@@ -6522,8 +6397,8 @@ if __name__ == "__main__":
                                 drop = droppable[k]
                                 drop[0][1] = font.render(drop[0][0],True,black)
                                 drop[0][2] = drop[0][1].get_rect(x=x,y=y)
-                                drop[-1].replaceText(getattr(self.list_mp3[starting],k) if getattr(self.list_mp3[starting],k) else "")
                                 drop[-1].refresh(screen_rect.w-(drop[0][2].right+button_heigh*2),font)
+                                drop[-1].replaceText(getattr(self.list_mp3[starting],k) if getattr(self.list_mp3[starting],k) else "")
                                 r = drop[-1].init_rect(x=drop[0][2].right+button_heigh,bottom=drop[0][2].bottom)
                                 if drop[-2] is not None:
                                     drop[-2].refresh(small_font,r.w)
@@ -6536,11 +6411,8 @@ if __name__ == "__main__":
                                 r = drop[0][2] = drop[0][1].get_rect(x=x,y=y)
                                 num = getattr(self.list_mp3[starting],k)
                                 for i,b in zip(num,drop[-1]):
-                                    if i is None:
-                                        b.replaceText("")
-                                    else:
-                                        b.replaceText(str(i))
                                     b.refresh(screen_rect.w/4,font)
+                                    b.replaceText(str(i) if i else "")
                                     r = b.init_rect(x=r.right+button_heigh,bottom=drop[0][2].bottom)
 
                                 y = r.bottom+button_heigh/2
@@ -6553,11 +6425,8 @@ if __name__ == "__main__":
                                 data = getattr(self.list_mp3[starting],k)
                                 
                                 for i,b in zip(data,drop[-1]):
-                                    if i is None:
-                                        b.replaceText("")
-                                    else:
-                                        b.replaceText(str(i))
                                     b.refresh(screen_rect.w/10,font)
+                                    b.replaceText(str(i) if i else "")
                                     r = b.init_rect(x=r.right+button_heigh,bottom=drop[0][2].bottom)
 
                                 y = r.bottom+button_heigh/2
@@ -6567,10 +6436,10 @@ if __name__ == "__main__":
                                 drop = boxes[k]
                                 drop[0][1] = font.render(drop[0][0],True,black)
                                 drop[0][2] = drop[0][1].get_rect(x=x,y=y)
-                                drop[-1][0].refresh(0,font.render(add,True,black))
+                                drop[-1][0].refresh(font.render(add,True,black),0)
                                 r = drop[-1][0].init_rect(x=drop[0][2].right+button_heigh,bottom=drop[0][2].bottom)
                                 drop[-1][0].text_rect("center")
-                                drop[-1][1].refresh(0,font.render(delete,True,black))
+                                drop[-1][1].refresh(font.render(delete,True,black),0)
                                 drop[-1][1].init_rect(x=r.right+button_heigh,bottom=drop[0][2].bottom)
                                 drop[-1][1].text_rect("center")
                                 comments = getattr(self.list_mp3[starting],k)
@@ -6589,9 +6458,11 @@ if __name__ == "__main__":
                                         i+=1
                                         y=r.bottom+button_heigh/2
                                     else:
-                                        dr.append(TextBox(screen_rect.w/4,font,description if description else "",desc,64))
+                                        dr.append(TextBox(description if description else "",desc,64))
+                                        dr[-1].refresh(screen_rect.w/4,font)
                                         r = dr[-1].init_rect(x=x,y=y)
-                                        dr.append(TextBox(screen_rect.w/3*2-button_heigh,font,comment if comment else "",content,1024))
+                                        dr.append(TextBox(comment if comment else "",content,1024))
+                                        dr[-1].refresh(screen_rect.w/3*2-button_heigh,font)
                                         dr[-1].init_rect(x=r.right+button_heigh,bottom=r.bottom)
                                         i+=2
                                         y=r.bottom+button_heigh/2
@@ -6608,7 +6479,7 @@ if __name__ == "__main__":
                                 b = boxes[k]
                                 b[0][1] = font.render(b[0][0],True,black)
                                 b[0][2] = b[0][1].get_rect(x=x,y=y)
-                                b[1].refresh(0,font.render(edit,True,black))
+                                b[1].refresh(font.render(edit,True,black),0)
                                 y=b[1].init_rect(x=b[0][2].right+button_heigh/2,centery=b[0][2].centery).bottom+button_heigh/2
                                 b[1].text_rect()
 
@@ -6630,19 +6501,19 @@ if __name__ == "__main__":
                         ),screen_rect.w/6)
                         w = screen_rect.w/5
                         x = w/2
-                        prev_b.refresh(width,font.render(prev,True,black),width)
+                        prev_b.refresh(font.render(prev,True,black),width,width)
                         prev_b.init_rect(centerx=x,bottom=y)
                         prev_b.text_rect()
                         x+=w
-                        follow_b.refresh(width,font.render(follow,True,black),width)
+                        follow_b.refresh(font.render(follow,True,black),width,width)
                         follow_b.init_rect(centerx=x,bottom=y)
                         follow_b.text_rect()
                         x+=w
-                        stop_b.refresh(width,font.render(stop,True,black),width)
+                        stop_b.refresh(font.render(stop,True,black),width,width)
                         t = stop_b.init_rect(centerx=x,bottom=y)
                         stop_b.text_rect()
                         x+=w
-                        refresh_b.refresh(width,font.render(refresh,True,black),width)
+                        refresh_b.refresh(font.render(refresh,True,black),width,width)
                         y = refresh_b.init_rect(centerx=x,bottom=y).top
                         refresh_b.text_rect()
 
@@ -6901,33 +6772,33 @@ if __name__ == "__main__":
             close = "Esci"
             
             t = pygame.Surface((1,1))
-            close_b = NormalButton(2, t, func=self.utilities.screen.quit)
-            opt_b = NormalButton(2, t, func=self.utilities.color_reverse)
-            new_b = NormalButton(2, t, func=self.run, args=(self.song,True))
-            old_b = NormalButton(2, t, func=self.run, args=(self.song,))
-            goback = ImageButton(t,func=self.walk_out)
-            replace = ImageButton(t,func=self.replace_folder)
-            self.directory_box = TextBox(22, pygame.font.SysFont("corbel",3), initial_text=self.path, empty_text=empty_textBox, max_char=500, bar_color="black",func=self.replace_folder)
-            self.directory_box.init_rect(x=0, y=0)
+            close_b = NormalButton(func=self.utilities.screen.quit)
+            opt_b = NormalButton(func=self.utilities.color_reverse)
+            new_b = NormalButton(func=self.run, func_args=(self.song,True))
+            old_b = NormalButton(func=self.run, func_args=(self.song,))
+            goback = ImageButton(func=self.walk_out)
+            replace = ImageButton(func=self.replace_folder)
+            self.directory_box = TextBox(initial_text=self.path, empty_text=empty_textBox, max_char=500, bar_color="black",func=self.replace_folder)
 
             # a group of sprites
             g = pygame.sprite.Group(self.directory_box, old_b, new_b, close_b, opt_b, goback, replace)
             
             t = pygame.font.SysFont("corbel",2)
-            little_menu = LittleMenu(t)
+            little_menu = LittleMenu()
             title_s = [None,None]
             subt_s = [None,None]
             current_s = [None,None]
             little_surface = [pygame.Surface((2,2),pygame.SRCALPHA),None]
             bigger_surface = pygame.Surface((2,2),pygame.SRCALPHA)
-            v_bar = VerticalBar(4,40,30,15)
+            v_bar = VerticalBar()
             g2 = pygame.sprite.Group()
 
             bar = None
-            folders_b = []
+            folders_b:list[NormalButton] = []
             n_files = None
 
             #starting the initial while loop to update text & graphics
+            self.utilities.booleans[1] = True
             while self.utilities.booleans[1] or self.search:
                 #getting screen sizes
                 screen_rect = self.utilities.screen.get_rect()
@@ -6989,19 +6860,19 @@ if __name__ == "__main__":
                     button_y = little_surface[1].bottom+button_heigh*2
                     x=button_x*0.5
 
-                    close_b.refresh(button_w,close_s)
+                    close_b.refresh(close_s,button_w)
                     x += close_b.init_rect(x=x,centery=button_y).width+button_x
                     close_b.text_rect()
 
-                    opt_b.refresh(button_w,opt_s)
+                    opt_b.refresh(opt_s,button_w)
                     x += opt_b.init_rect(x=x,centery=button_y).width+button_x
                     opt_b.text_rect()
 
-                    new_b.refresh(button_w, new_s)
+                    new_b.refresh(new_s,button_w)
                     x += new_b.init_rect(x=x,centery=button_y).width+button_x
                     new_b.text_rect()
 
-                    old_b.refresh(button_w, old_s)
+                    old_b.refresh(old_s,button_w)
                     old_b.init_rect(x=x,centery=button_y)
                     old_b.text_rect()
 
@@ -7026,7 +6897,7 @@ if __name__ == "__main__":
                         vw = little_surface[1].w-NormalButton.button_space
                         y = 1
                         for i in range(len(folders_b)):
-                            folders_b[i].refresh(vw,smallfont.render(folders[i],True,self.utilities.colors["black"]),little_width)
+                            folders_b[i].refresh(smallfont.render(folders[i],True,self.utilities.colors["black"]),vw,little_width)
                             y += folders_b[i].init_rect(x=0,y=y).h+1
                             folders_b[i].text_rect('midleft')
 
@@ -7073,7 +6944,8 @@ if __name__ == "__main__":
                         vw = little_surface[1].w-NormalButton.button_space
                         y = 1
                         for directory in folders:
-                            folders_b.append(NormalButton(vw,little_font.render(directory,True,self.utilities.colors["black"]),little_width,func=self.walk_in,args=(directory,)))
+                            folders_b.append(NormalButton(func=self.walk_in,func_args=(directory,)))
+                            folders_b[-1].refresh(smallfont.render(directory,True,self.utilities.colors["black"]),vw,little_width)
                             y += folders_b[-1].init_rect(x=0,y=y).h+1
                             folders_b[-1].text_rect('midleft')
 
