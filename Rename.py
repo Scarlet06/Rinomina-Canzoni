@@ -22,7 +22,7 @@ class Colors:
     # the night_mode
 
     __slots__ = (
-        '_colors',      #dict[str:pygame.Color] -> has the colors
+        '__colors',      #dict[str:pygame.Color] -> has the colors
         '__colors_dark'  #dict[str:pygame.Color] -> has the colors for dark mode
         )
 
@@ -33,7 +33,7 @@ class Colors:
     alphed = pygame.Color(0,0,0,5)
 
     def __init__(self) -> None:
-        self._colors = {
+        self.__colors = {
             'background': pygame.Color(239, 239, 239),
             'white': pygame.Color(255, 255, 255),
             'gray': pygame.Color(196, 196, 196),
@@ -80,14 +80,14 @@ class Colors:
 
         if type(__color) is tuple:
             return self._colors[__color[0]]-pygame.Color(0,0,0,255-__color[1])
-        return self._colors[__color]
+        return self.__colors[__color]
         
     def reverse(self) -> None:
         """
         reverse the colors for the night theme
         """
 
-        self._colors, self.__colors_dark = self.__colors_dark, self._colors
+        self.__colors, self.__colors_dark = self.__colors_dark, self.__colors
 
 class ENV(dict):
     #this object simulates the dotenv package to work with .env file
