@@ -79,7 +79,7 @@ class Colors:
         """
 
         if type(__color) is tuple:
-            return self._colors[__color[0]]-pygame.Color(0,0,0,255-__color[1])
+            return self.__colors[__color[0]]-pygame.Color(0,0,0,255-__color[1])
         return self.__colors[__color]
         
     def reverse(self) -> None:
