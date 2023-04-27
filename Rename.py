@@ -3506,8 +3506,6 @@ class Drop(pygame.sprite.Sprite):
     def __init__(self,
         box:TextBox,
         file:str,
-        font:pygame.font.Font,
-        length:int,
         quantity:int = 5,
         txt_color:str = "white",
         bk_color:str = "gray",
@@ -3523,16 +3521,16 @@ class Drop(pygame.sprite.Sprite):
 
         self.utilities = utilities
         self.quantity = quantity
-        self.length = length
+        self.length = 0
         self.box = box
-        self.font = font
+        self.font:pygame.font.Font = None
         self.colors = (txt_color, bk_color, bt_hover_color, bt_clicked_color)
         
-        self.h = font.size("A")[1]
+        self.h = 0
         self.rect = None
-        self.image = pygame.Surface((self.length,self.h*quantity),pygame.SRCALPHA)
+        self.image = pygame.Surface((1,1),pygame.SRCALPHA)
         self.long_image = pygame.Surface((1,1),pygame.SRCALPHA)
-        self.v_bar = VerticalBar(bar_color="dark_gray")
+        self.v_bar = VerticalBar(bar_color="dark_gray",utilities=utilities)
         self.bar = None
         self.g = pygame.sprite.Group()
 
@@ -4253,10 +4251,6 @@ class VerticalBar(pygame.sprite.Sprite):
     @classmethod
     def scroller(
         cls,
-        screen_rect:pygame.Rect,
-        scroll_len:float,
-        window_y:float=0,
-        window_h:float=0,
         utilities: Utilities=utilities
         ) -> None:
         """
@@ -4275,19 +4269,9 @@ class VerticalBar(pygame.sprite.Sprite):
         - colors [Colors]           -> the Colors used for the image
         """
 
-        if window_h==0:
-            window_h=screen_rect.h
-
         t = cls(
             utilities=utilities
             )
-        t.refresh(
-            cls.button_length,
-            window_h,
-            scroll_len,
-            screen_rect.h,
-            colors=utilities.colors)
-        t.init_rect(right=screen_rect.w, y=window_y)
         t.refresh, t._refresh = t._refresh, t.refresh
         return t
 
@@ -4698,18 +4682,10 @@ class HorizontalBar(pygame.sprite.Sprite):
         - colors [Colors]           -> the Colors used for the image
         """
 
-        if window_w==0:
-            window_w=screen_rect.w
         t = cls(
             utilities=utilities
             )
-        t.refresh(
-            window_w,
-            cls.button_length,
-            scroll_len,
-            screen_rect.w,
-            colors=utilities.colors)
-        t.init_rect(x=window_x, bottom=screen_rect.h)
+
         t.refresh, t._refresh = t._refresh, t.refresh
         return t
 
@@ -5731,7 +5707,7 @@ if __name__ == "__main__":
                 g = pygame.sprite.Group(r for *_,r in rectangles.values())
                 g_findet = pygame.sprite.Group()
 
-                v_bar = VerticalBar.scroller(pygame.Rect(0,0,10,100),150)
+                v_bar = VerticalBar.scroller(utilities)
                 bar =None
                 
                 for (kk,k),v in whole_data.items():
@@ -5934,7 +5910,7 @@ if __name__ == "__main__":
                 start = "Start"
                 options = "Options"
 
-                v_bar = VerticalBar()
+                v_bar = VerticalBar(utilities= utilities)
                 bar = None
 
                 max_lenght = 20_000
@@ -6221,15 +6197,13 @@ if __name__ == "__main__":
                 content = "Contenuto"
                 edit = "Gestisci"
 
-                t = pygame.font.SysFont("corbel",3)
-                s = pygame.Surface((1,1))
                 g = pygame.sprite.Group()
                 g_super = pygame.sprite.Group()
                 g_diff = pygame.sprite.Group()
                 little_menu = LittleMenu()
                 all_boxes = []
                 all_drops = []
-                v_bar = VerticalBar.scroller(pygame.Rect(0,0,10,100),150)
+                v_bar = VerticalBar.scroller(utilities)
                 bar =None
                 shorter = pygame.Surface((1,1),pygame.SRCALPHA)
                 longer = pygame.Surface((1,1),pygame.SRCALPHA)
@@ -6268,7 +6242,7 @@ if __name__ == "__main__":
                     b=TextBox(empty_text=v)
                     all_boxes.append(b)
                     if int(d):
-                        droppable[k]=([v,None,None],Drop(b,k,t,2),b)
+                        droppable[k]=([v,None,None],Drop(b,k),b)
                         droppable[k][-2].init_rect()
                         g_super.add(droppable[k][1])
                         all_drops.append(droppable[k][1])
@@ -6345,7 +6319,7 @@ if __name__ == "__main__":
                 p.set_next(f)
                 f.set_prev(p)
 
-                del t,s,b,k,v,d,p,n,f
+                del b,k,v,d,p,n,f
 
                 self.change_song = 0
                 self.save=False
@@ -6472,7 +6446,7 @@ if __name__ == "__main__":
                             font.size(prev)[0],
                             font.size(follow)[0],
                             font.size(refresh)[0]
-                        ),screen_rect.w/6)
+                        ),screen_rect.w/6)+NormalButton.button_space
                         w = screen_rect.w/5
                         x = w/2
                         prev_b.refresh(font.render(prev,True,black),width,width,colors=utilities.colors)
@@ -6744,7 +6718,6 @@ if __name__ == "__main__":
             without_files = "non contiene file"
             close = "Esci"
             
-            t = pygame.Surface((1,1))
             close_b = NormalButton(func=self.utilities.screen.quit,utilities=utilities)
             opt_b = NormalButton(func=self.utilities.color_reverse,utilities=utilities)
             new_b = NormalButton(func=self.run, func_args=(self.song,True),utilities=utilities)
@@ -6756,14 +6729,13 @@ if __name__ == "__main__":
             # a group of sprites
             g = pygame.sprite.Group(self.directory_box, old_b, new_b, close_b, opt_b, goback, replace)
             
-            t = pygame.font.SysFont("corbel",2)
             little_menu = LittleMenu()
             title_s = [None,None]
             subt_s = [None,None]
             current_s = [None,None]
             little_surface = [pygame.Surface((2,2),pygame.SRCALPHA),None]
             bigger_surface = pygame.Surface((2,2),pygame.SRCALPHA)
-            v_bar = VerticalBar()
+            v_bar = VerticalBar(utilities=utilities)
             g2 = pygame.sprite.Group()
 
             bar = None
