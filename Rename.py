@@ -207,12 +207,8 @@ class INI(dict):
 
                         # if key is pos / resolution, its value has to be "x,y"
                         elif i<2:
-                            k=match(r"-?\d+[,]-?\d+", t[self.__key[i]])
-                            if not k is None:
-                                if t[self.__key[i]] != k[0]:
-                                    t[self.__key[i]] = self.__val[i]
-                                    tt=True
-                            else:
+                            k = t[self.__key[i]].split(",",1)
+                            if len(k)<2 or not all(map(lambda z:z.isdecimal(),k)):
                                 t[self.__key[i]] = self.__val[i]
                                 tt=True
                             continue
@@ -221,20 +217,6 @@ class INI(dict):
                         elif type(self.__val[i]) is int:
                             if t[self.__key[i]].isnumeric():
                                 t[self.__key[i]] = int(t[self.__key[i]])
-                            else:
-                                t[self.__key[i]] = self.__val[i]
-                                tt=True
-                            continue
-
-                        # if the value has to be a float, so it will be checked
-                        elif type(self.__val[i]) is float:
-                            k=match(r"(\d*[.])?\d+", t[self.__key[i]])
-                            if not k is None:
-                                if t[self.__key[i]] == k[0]:
-                                    t[self.__key[i]] = float(t[self.__key[i]])
-                                else:
-                                    t[self.__key[i]] = self.__val[i]
-                                    tt=True
                             else:
                                 t[self.__key[i]] = self.__val[i]
                                 tt=True
@@ -1273,10 +1255,6 @@ class NormalButton(pygame.sprite.Sprite):
         # we prepare the sprite of the button if in clicked state
         self._clicked = pygame.Surface(t_size)
         self._clicked.fill(colors[self._colors[2]])
-
-        # Theese are infos property of the button used to make the animation
-        # happen with "update"
-        self._is_hovered = self._is_clicked = False
             
         # These are infos property needed to make the Sprite class work 
         # as expected
@@ -1796,7 +1774,6 @@ class ImageButton(NormalButton):
 
         self._colors = (bt_hover_color, bt_clicked_color)
 
-
     def text_rect(self) -> None:
         """
         THIS FUNCTION IS USELESS
@@ -1877,7 +1854,8 @@ class ImageButton(NormalButton):
             func_args=func_args,
             utilities=utilities,
             *args,
-            **kwargs)
+            **kwargs
+            )
         t.refresh = t.__refresh
         return t
     
@@ -1938,7 +1916,9 @@ class LittleMenu(pygame.sprite.Sprite):
         self,
         bt_hover_color:str='gray',
         bt_clicked_color:str='white',
-        utilities: Utilities=utilities
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a right-mouse-click menu.
@@ -1956,6 +1936,9 @@ class LittleMenu(pygame.sprite.Sprite):
                                             little check
         - colors [Colors]               -> the Colors used for the image
         '''
+
+        # initializing the sprite class
+        super().__init__(*args, **kwargs)
 
         #setting initial value of the object
         self._active = False
@@ -2222,7 +2205,6 @@ class TextBox(pygame.sprite.Sprite):
     
     __slots__ = (
         "_colors",      # [Colors]                  -> colors object
-        "_decoder",     # [str]                     -> string to decode text
         "_font",        # [pygame.font.SysFont]     -> font to rendere the
                         #                               typed in text
         "_text",        # [str]                     -> typed in text
@@ -2413,16 +2395,12 @@ class TextBox(pygame.sprite.Sprite):
         # initializing the sprite class
         super().__init__(*args,**kwargs)
         self._colors = utilities.colors
-        self._decoder = utilities.decoder
 
         # setting all the variables which will be used 
         self._font:pygame.font.Font = None
         self._max_char = max_char
         self._empty_text = empty_text
-        if empty_text:
-            self._empty_surf:pygame.Surface = None
-        else:
-            self._empty_surf = False
+        self._empty_surf:pygame.Surface = None
         self._bar:pygame.Surface = None
         self._rule = rule
 
@@ -2458,10 +2436,10 @@ class TextBox(pygame.sprite.Sprite):
         self._text = initial_text
         self._text_surf:list[pygame.Surface] = []
         self._changed = False
-        # if initial_text:
-        #     self.addText(initial_text)
+        
         self._next=None
         self._prev=None
+
         # These are infos property needed to make the Sprite class work
         # as expecter
         self.image:pygame.Surface = None
@@ -2588,8 +2566,7 @@ class TextBox(pygame.sprite.Sprite):
         self,
         event_list:list[pygame.event.Event],
         pos:tuple[int,int],
-        hover:bool=True,
-        colors: Colors=utilities.colors
+        hover:bool=True
         ) -> None:
         """
         It checks every event to update the button 
@@ -2598,8 +2575,6 @@ class TextBox(pygame.sprite.Sprite):
         - event_list [list[pygame.event.Event]]     -> list of all the events
                                                         from the program.
         - pos [tuple[int,int]]                      -> position of the mouse
-        - colors [Colors]                           -> the Colors used for
-                                                        the image
         """
 
         # It checks the collision of the mouse with the button
@@ -2662,16 +2637,16 @@ class TextBox(pygame.sprite.Sprite):
                     # getting writable
                     elif not self._writable:
                         self._clicked = hover
+
                         if self._selected or self._selectable:
+
                             self._k = self._kk
-                            
                             self._selected = self._selectable = False
 
                     # This could be else, but it saves some iteration(?)
                     # I've to remember this in case of bugs
-                    elif self._selected or self._selectable: 
+                    elif self._selected or self._selectable:
                         self._k = self._kk
-                        
                         self._selected = self._selectable = False
             
                 # That's the right button, I coud do the same as for
@@ -2807,6 +2782,7 @@ class TextBox(pygame.sprite.Sprite):
                 #given
                 if any(self._control) and event.text in self._specials:
                     continue
+
                 self.addText(event.text)
 
                 #if it was selected (or electable) it has to be setted as False
@@ -3038,8 +3014,8 @@ class TextBox(pygame.sprite.Sprite):
                 self._counter=0
             
         #setting the surfaces
-        self.image.fill(colors[self._box_normal_color])
-        self._text_rect.fill(colors.transparent)
+        self.image.fill(self._colors[self._box_normal_color])
+        self._text_rect.fill(self._colors.transparent)
 
         #seting the initial positions
         y = self.button_space//2
@@ -3203,7 +3179,7 @@ class TextBox(pygame.sprite.Sprite):
         if self._writable:
             pygame.draw.rect(
                 self.image,
-                colors[self._box_writable_color],
+                self._colors[self._box_writable_color],
                 self.image.get_rect(),
                 y
                 )
@@ -3257,15 +3233,19 @@ class TextBox(pygame.sprite.Sprite):
         #next the text is added 
         if self._rule is not None:
             #check the rule if present and add every accepted char (until the limit is reached)
-            for nt in self._rule(new_text):
-                if len(self._text)<self._max_char:
+            for i,nt in enumerate(self._rule(new_text),len(self._text)):
+                if i>=self._max_char:
+                    break
+                elif self._font.size(nt)[0]:
                     self._insert(nt)
+
         else:
             #adds every accepted char (until the limit is reached)
-            for nt in new_text:
-                if len(self._text)<self._max_char:
-                    if self._font.size(nt)[0]:
-                        self._insert(nt)
+            for i,nt in enumerate(new_text,len(self._text)):
+                if i>=self._max_char:
+                    break
+                elif self._font.size(nt)[0]:
+                    self._insert(nt)
         self._i = 0
 
     def _pop(self, left:bool=True) -> None:
@@ -3331,8 +3311,8 @@ class TextBox(pygame.sprite.Sprite):
 
         #to remove manychars
         if self._selected:
-            self._selected=False
             self._pops()
+            self._selected=False
         
         #to remove only one char
         elif self._k<len(self._text):
@@ -3779,6 +3759,10 @@ class RectengleText(pygame.sprite.Sprite):
         )
 
     space=4         # [int]                 -> space on the border
+    
+    from pyperclip import copy
+    __copy=staticmethod(copy)
+    del copy
 
     def __init__(
         self,
@@ -3885,8 +3869,7 @@ class RectengleText(pygame.sprite.Sprite):
         self,
         event_list:list[pygame.event.Event],
         pos:tuple[int,int],
-        hover:bool=True,
-        decoder:str=utilities.decoder
+        hover:bool=True
         ) -> None:
         # It checks the collision of the mouse with the button
         hover &= self.rect.collidepoint(pos)
@@ -3897,7 +3880,7 @@ class RectengleText(pygame.sprite.Sprite):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 3 and hover:
                     try:
-                        pygame.scrap.put(pygame.SCRAP_TEXT,bytes(self.text,decoder))
+                        self.__copy(self.text)
                     except:
                         pass
                     break
@@ -3962,7 +3945,9 @@ class VerticalBar(pygame.sprite.Sprite):
         bt_hover_color:str='light_blue',
         bt_clicked_color:str='dark_blue',
         bar_color:str="gray",
-        utilities: Utilities=utilities
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         '''
         Initializating the class to have a vertical bar for scroll things.
@@ -3988,7 +3973,7 @@ class VerticalBar(pygame.sprite.Sprite):
         '''
 
         # initializing the sprite class
-        super().__init__()
+        super().__init__(*args,**kwargs)
         self._down_i = pygame.image.load("./Images/down.png").convert()
                             # [pygame.Sprite]       -> sprite for the up button
         self._up_i = pygame.transform.rotate(self._down_i, 180)
@@ -4251,7 +4236,9 @@ class VerticalBar(pygame.sprite.Sprite):
     @classmethod
     def scroller(
         cls,
-        utilities: Utilities=utilities
+        utilities: Utilities=utilities,
+        *args,
+        **kwargs
         ) -> None:
         """
         This class type will create a scrollbar all the way to the left,
@@ -4270,7 +4257,9 @@ class VerticalBar(pygame.sprite.Sprite):
         """
 
         t = cls(
-            utilities=utilities
+            utilities=utilities,
+            *args,
+            **kwargs
             )
         t.refresh, t._refresh = t._refresh, t.refresh
         return t
@@ -4322,422 +4311,7 @@ class VerticalBar(pygame.sprite.Sprite):
         """
         
         return self.rect.inflate(4,4)
-
-class HorizontalBar(pygame.sprite.Sprite):
-    #pygame Sprite to handle vertical scroll bar object
-
-    __slots__ = (
-        "image",        # [pygame.Surf]         -> image shown after
-                        #                           the object is updated
-        "rect",         # [pygame.Rect]         -> rect of the dimensions
-                        #                           of the object
-        "_left",        # [ImageButton]         -> button to move
-                        #                           the moving_button up
-        "_right",       # [ImageButton]         -> button to move
-                        #                           the moving_button down
-        "_bar_len",     # [float]               -> the the lenght of
-                        #                           the bar button
-        "_len",         # [float]               -> the lenght where
-                        #                           the button can move
-        "_scroll_rate", # [float]               -> that's the ratio the get
-                        #                           the crolling right
-        "_start",       # [float]               -> 0-point for the bar to move
-        "_translate",   # [float]               -> the translation for the bar
-                        #                           from start
-        "_bar_r",       # [pygame.Surf]         -> the image for the bar
-        "_bar",         # [ImageButton]         -> button that moves
-        "_g",           # [pygame.sprite.Group] -> group of sprites
-        "_key_clicked", # [tuple[bool,bool]]    -> it contains True when a key
-                        #                           is pressed and not yet
-                        #                           released.
-                        #                           It stands for [Left, Right]
-        "_bar_color",   # [str]                 -> color of the bar
-        "_window_h"     # [float]               -> current height of the window
-                        #                           (needed to calculate the
-                        #                           fixed position)
-        )
     
-    button_length = 15  # [int]                 -> button size 
-                        #                           if VarticalBar.scroller
-                        #                           is called
-    modifier = 5        # [int]                 -> scroller value for buttons
-                        #                           or mousewheel
-
-    def __init__(
-        self,
-        bt_hover_color:str='light_blue',
-        bt_clicked_color:str='dark_blue',
-        bar_color:str="gray",
-        utilities:Utilities=utilities
-        ) -> None:
-        '''
-        Initializating the class to have a vertical bar for scroll things.
-        After init_rect() has to be called
-        
-        INPUT:
-        - window_w [float|int]      -> value of the length of the image
-        - window_h [float|int]      -> value of the height of the image
-        - scroll_len [float|int]    -> lenght it it is wanted to scroll
-        - real_len [float|int]      -> lenght visible wher the scrolled
-                                        will be blitted
-        - bt_hover_color [str]      -> color of the Imagebutton
-                                        in hovered state
-        - bt_pressed_color [str]    -> color of the Imagebutton
-                                        in clicked state and as border
-                                        in hovered state
-        - bar_color [str]           -> color of the moving button
-        - start_bar [float|int]     -> initial point where the scroller
-                                        will be at
-        - booleans [Boleans]        -> the Booleans variable used for one
-                                        little check
-        - colors [Colors]           -> the Colors used for the image
-        '''
-
-        # initializing the sprite class
-        super().__init__()
-
-        self._right_i = pygame.transform.rotate(
-            pygame.image.load("./Images/down.png"),
-            90
-            ).convert()
-        self._left_i = pygame.transform.rotate(self._right_i, 180)
-
-        #setting the buttons
-        self._left = ImageButton(
-            bt_hover_color,
-            bt_clicked_color,
-            utilities=utilities
-            )
-
-        self._right = ImageButton(
-            bt_hover_color,
-            bt_clicked_color,
-            utilities=utilities
-            )
-        
-        #setting all the lenght values
-        self._len = 10
-        self._scroll_rate = 1
-
-        #setting the values for the moving bar
-        self._start = 0
-        self._translate = 0
-        
-        #setting the moving button
-        self._bar_r = pygame.Surface((1,1))
-        self._bar = ImageButton(
-            bt_hover_color,
-            bt_clicked_color,
-            utilities=utilities
-            )
-        self._g = pygame.sprite.Group(self._left, self._right, self._bar)
-
-        #setting other values
-        self._key_clicked = [False,False]
-        self._bar_color = bar_color
-        self._window_w = 10
-
-        #setting the image
-        self.image = pygame.Surface((1,1),pygame.SRCALPHA)
-        self.rect:pygame.Rect = None
-
-    def __float__(self) -> float:
-        """
-        It returns the value of pixels the wanted surface
-        has to be translated accordingly
-
-        OUTPUT:
-        - [float] -> the to-scroll quantity
-        """
-
-        return -self._translate*self._scroll_rate
-
-    def refresh(
-        self,
-        window_w:float,
-        window_h:float,
-        scroll_len:float,
-        real_len:float,
-        start_bar_init:bool=True,
-        colors: Colors=utilities.colors
-        ) -> None:
-        '''
-        This function let re-use the same button without creating a new one
-        when resizing the screen
-        
-        INPUT:
-        - window_w [float|int]      -> value of the length of the image
-        - window_h [float|int]      -> value of the height of the image
-        - scroll_len [float|int]    -> lenght it it is wanted to scroll
-        - real_len [float|int]      -> lenght visible wher the scrolled
-                                        will be blitted
-        - start_bar_init [bool|int] -> if True, the old width-point, resized,
-                                        will be used,
-                                        otherways it will be put at 0
-        - colors [Colors]           -> the Colors used for the image
-        '''
-        
-        #calculationg the position of the previous bar
-        start_bar = self._translate*window_w/self._window_w*start_bar_init
-        self._window_w = window_w
-
-        #refreshing teh buttons
-        self._left.refresh(
-            pygame.transform.smoothscale(
-                self._left_i,
-                (window_h,window_h)
-                ),
-            colors = colors
-            )
-        t = self._left.init_rect(x=0, y=0)
-
-        self._right.refresh(
-            pygame.transform.smoothscale(
-                self._right_i,
-                (window_h, window_h)
-                ),
-            colors = colors
-            )
-        self._right.init_rect(right=window_w, y=0)
-
-        #refreshing all the lenght values
-        full_len = window_w-2*t.w
-        bar_len = full_len*real_len/scroll_len
-        self._len = full_len-bar_len
-        if self._len > int(self._len):
-            self._len = int(self._len+1)
-        self._scroll_rate = (scroll_len-real_len)/(self._len)
-
-        #refreshing the values for the moving bar
-        self._start = t.w
-        self._translate = 0
-        if 0<start_bar/self._scroll_rate<self._len:
-            self.minus(start_bar/self._scroll_rate)
-        else:
-            self._modifier = 0
-
-        #refreshing the moving button
-        self._bar_r = pygame.transform.scale(self._bar_r, (bar_len,window_h))
-        self._bar_r.fill(colors[self._bar_color])
-        self._bar.refresh(self._bar_r,colors=colors)
-        self._bar.init_rect(x=self._start+self._translate,y=0)
-
-        #refreshing the image
-        self.image = pygame.transform.scale(self.image, (window_w,window_h))
-
-    def init_rect(self, **kwargs) -> pygame.Rect:
-        '''
-        it calls the standard function for pygame.Surface
-        and passes to it all the arguments
-        
-        INPUT:
-        - **kwargs      -> syntax for pygame.Surf.get_rect()
-        
-        OUTPUT:
-        - [pygame.Rect] -> is the rect of the object
-        '''
-
-        self.rect = self.image.get_rect(**kwargs)
-        return self.rect
-        
-    def get_rect(self) -> pygame.Rect:
-        '''
-        Standard function for pygame.Surface,
-        but in the right position in the screen
-        
-        OUTPUT:
-        - [pygame.Rect] -> is the rect of the object
-        '''
-
-        return self.rect
-
-    def draw(self, screen:pygame.Surface) -> None:
-        """
-        It draws the buttons on the given surface
-        with its corresponding rect position
-
-        INPUT: 
-         - screen [pygame.Surface]  -> surface where to blit the button
-        """
-
-        #drawing the image surface on the given screen
-        screen.blit(self.image, self.rect)
-
-    def plus(self, modifier:float = modifier) -> None:
-        """
-        This function changes the position bar by the given quantity
-
-        INPUT:
-        - modifier [float|int]  -> it is used to move left the bar, if it is
-                                    not given, the class.value will be used
-        """
-
-        if self._translate> modifier:
-            self._translate -= modifier
-        elif self._translate>0:
-            self._translate = 0
-    
-    def minus(self, modifier:float = modifier) -> None:
-        """
-        This function changes the position bar by the given quantity
-
-        INPUT:
-        - modifier [float|int]  -> it is used to move right the bar, if it is
-                                    not given, the class.value will be used
-        """
-
-        if self._translate<self._len-modifier:
-            self._translate += modifier
-        elif self._translate <self._len:
-            self._translate = self._len
-
-    def update(
-        self,
-        event_list:list[pygame.event.Event],
-        pos:tuple[int,int],
-        hover:bool=True,
-        colors: Colors=utilities.colors
-        ) -> None:
-        """
-        It checks every event to update all the buttons of the little menu
-
-        INPUT: 
-         - event_list [list[pygame.event.Event]]    -> list of all the events
-                                                        from the program.
-         - pos [tuple[int,int]]                     -> position of the mouse
-         - colors [Colors]                          -> the Colors used for
-                                                        the image
-        """
-
-        pos = (pos[0]-self.rect.x, pos[1]-self.rect.y)
-        self._g.update(event_list, pos, hover)
-        
-        if self._bar:
-            cx = self._bar.get_rect().centerx
-            if pos[0]<cx and self._translate>0:
-                self.plus(cx-pos[0])
-            elif pos[0]>cx and self._translate<self._len:
-                self.minus(pos[0]-cx)
-        elif self._left and self._left.get_rect().collidepoint(pos):
-            self.plus()
-        elif self._right and self._right.get_rect().collidepoint(pos):
-            self.minus()
-
-        for event in event_list:
-            if event.type == pygame.MOUSEWHEEL:
-                self.modifier=5
-                if event.x > 0 or event.y > 0:
-                    self.plus()
-                if event.x < 0 or event.y < 0:
-                    self.minus()
-
-            elif event.type == pygame.KEYDOWN:
-                # if an arrow key is pressed it moves the bar by 5
-                # in the corrisponding direction
-                if event.key == pygame.K_LEFT:
-                    self._key_clicked[0]=True
-                elif event.key == pygame.K_RIGHT:
-                    self._key_clicked[1]=True
-
-            elif event.type == pygame.KEYUP:
-                # if an arrow key is un-pressed it stops moving the bar
-                if event.key == pygame.K_LEFT:
-                    self._key_clicked[0]=False
-                elif event.key == pygame.K_RIGHT:
-                    self._key_clicked[1]=False
-            
-        if self._key_clicked[0] ^ self._key_clicked[1]:
-            if self._key_clicked[0]:
-                self.plus()
-            elif self._key_clicked[1]:
-                self.minus()
-
-        self._bar.init_rect(x=self._start+self._translate, y=0)
-
-        self.image.fill(colors.transparent)
-        self._g.draw(self.image)
-
-    @classmethod
-    def scroller(
-        cls,
-        screen_rect:pygame.Rect,
-        scroll_len:float,
-        window_x:float=0,
-        window_w:float=0,
-        utilities: Utilities=utilities
-        ) -> None:
-        """
-        This class type will create a scrollbar all the way to the left,
-        in such a way that it fills all the screen
-        (except for the optional values)
-
-        INPUT: 
-        - screen_rect [pygame.Rect] -> dimensions of the screen
-        - scroll_len [float|int]    -> lenght it it is wanted to scroll
-        - window_x [float|int]      -> value of where in its width,
-                                        put the VerticalBar
-        - window_w [float|int]      -> value of the width of the image
-        - booleans [Boleans]        -> the Booleans variable used for one
-                                        little check
-        - colors [Colors]           -> the Colors used for the image
-        """
-
-        t = cls(
-            utilities=utilities
-            )
-
-        t.refresh, t._refresh = t._refresh, t.refresh
-        return t
-
-    def _refresh(
-        self,
-        screen_rect:pygame.Rect,
-        scroll_len:float,
-        window_x:float=0,
-        window_w:float=0,
-        start_bar_init:bool=True,
-        colors: Colors=utilities.colors
-        ) -> None:
-        '''
-        This function let re-use the same object without creating a new one
-        when resizing the screen. It is used for VarticalBar.scroller()
-        
-        INPUT:
-        - screen_rect [pygame.Rect] -> dimensions of the screen
-        - scroll_len [float|int]    -> lenght it it is wanted to scroll
-        - window_x [float|int]      -> value of where in its width,
-                                        put the VerticalBar
-        - window_w [float|int]      -> value of the width of the image
-        - start_bar_init [bool|int] -> if True, the old width-point, resized,
-                                        will be used,
-                                        otherways it will be put at 0
-        - colors [Colors]           -> the Colors used for the image
-        '''
-
-        if window_w==0:
-            window_w=screen_rect.w
-
-        self._refresh(
-            window_w,
-            self.button_length,
-            scroll_len,
-            screen_rect.w,
-            start_bar_init,
-            colors = colors
-            )
-        self.init_rect(x=window_x, bottom=screen_rect.h)
-
-    def displayer(self) -> pygame.Rect:
-        """
-        It returns the rect of this object but inflated, by 2 px for each line
-        
-        OUTPUT:
-        - [pygame.Rect] -> is the inflated rect of the object
-        """
-        
-        return self.rect.inflate(4,4)
-
-
 if __name__ == "__main__":
     class Song:
         ID3_V24 = (2,4,0)
