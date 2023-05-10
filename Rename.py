@@ -5688,10 +5688,10 @@ if __name__ == "__main__":
                     file_s[1] = (0,screen_rect.centery)
 
                     w_min = min(small_font.size(stop)[0],small_font.size(cont)[0])
-                    stop_b.refresh(w_min,small_font.render(stop,True,black),colors=utilities.colors)
+                    stop_b.refresh(small_font.render(stop,True,black),w_min,colors=utilities.colors)
                     stop_b.init_rect(centerx=screen_rect.w/3,centery=screen_rect.h/4*3)
                     stop_b.text_rect()
-                    cont_b.refresh(w_min,small_font.render(cont,True,black),colors=utilities.colors)
+                    cont_b.refresh(small_font.render(cont,True,black),w_min,colors=utilities.colors)
                     cont_b.init_rect(centerx=screen_rect.w/3*2,centery=screen_rect.h/4*3)
                     cont_b.text_rect()
 
@@ -6312,9 +6312,10 @@ if __name__ == "__main__":
             v_bar = VerticalBar(utilities=utilities)
             g2 = pygame.sprite.Group()
 
-            bar = None
+            bar:VerticalBar = None
             folders_b:list[NormalButton] = []
-            n_files = None
+            folders:list[str] = []
+            n_files:int = None
 
             #starting the initial while loop to update text & graphics
             self.utilities.booleans[1] = True
@@ -6534,7 +6535,7 @@ if __name__ == "__main__":
                         
                     if little_menu:
                         self.utilities.screen.draw(little_menu)
-                        pygame.display.update(little_menu.get_rect())
+                        pygame.display.update(little_menu.displayer())
                     else:
                         #colore + titolo
                         self.utilities.screen.fill(self.utilities.colors['background'])
