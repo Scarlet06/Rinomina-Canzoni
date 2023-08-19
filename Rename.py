@@ -6349,12 +6349,12 @@ if __name__ == "__main__":
 
                     #dimensions to use
                     little_width = screen_rect.w/10*9
-                    button_heigh = min(screen_rect.w//25,screen_rect.h//10)
+                    button_heigh = min(screen_rect.w//25,screen_rect.h//20)-1
                     little_font = pygame.font.Font(self.utilities.magic,button_heigh)
                     fontone = pygame.font.Font(self.utilities.magic,button_heigh*3)
                     font = pygame.font.SysFont(self.utilities.corbel,button_heigh*2)
                     
-                    if screen_rect.w <= little_font.size(counter.format(with_files,1))[0]+screen_rect.w/5+font.size(sub_t)[0]:
+                    if screen_rect.w <= little_font.size(counter.format(with_files,88888))[0]+screen_rect.w*0.11+font.size(sub_t)[0]:
                         button_heigh = int(button_heigh*0.7)
                         little_font = pygame.font.Font(self.utilities.magic,button_heigh)
                         fontone = pygame.font.Font(self.utilities.magic,button_heigh*3)
@@ -6388,7 +6388,7 @@ if __name__ == "__main__":
                     little_surface[0] = pygame.transform.scale(little_surface[0],(little_width,screen_rect.h-subt_s[1].bottom-button_heigh*6))
                     little_surface[1] = little_surface[0].get_rect(centerx=screen_rect.w/2,top=f.bottom+button_heigh/2)
                     
-                    self.directory_box.refresh(l*little_width/(l+f.h*2), little_font)
+                    self.directory_box.refresh(int(l*little_width/(l+f.h*2))-1, little_font)
                     f = self.directory_box.init_rect(left = little_surface[1].left,y = subt_s[1].bottom+button_heigh/2)
                     subt_s[1].left = f.left
 
@@ -6435,7 +6435,7 @@ if __name__ == "__main__":
 
                     #resizing of trasparent items
                     if folders_b:
-                        vw = little_surface[1].w-NormalButton.button_space
+                        vw = little_surface[1].w
                         y = 1
                         for i in range(len(folders_b)):
                             folders_b[i].refresh(smallfont.render(folders[i],True,self.utilities.colors["black"]),vw,little_width,colors=utilities.colors)
@@ -6449,7 +6449,7 @@ if __name__ == "__main__":
                                 v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h,colors=utilities.colors)
                             except:
                                 v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h,colors=utilities.colors)
-                            v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
+                            v_bar.init_rect(left=little_surface[1].right+1,y=little_surface[1].y)
                             bar = v_bar
                         else:
                             bar = None
@@ -6482,7 +6482,7 @@ if __name__ == "__main__":
                     folders_b.clear()
                     g2.empty()
                     if folders:
-                        vw = little_surface[1].w-NormalButton.button_space
+                        vw = little_surface[1].w
                         y = 1
                         for directory in folders:
                             folders_b.append(NormalButton(func=self.walk_in,func_args=(directory,),utilities=utilities))
@@ -6497,7 +6497,7 @@ if __name__ == "__main__":
                                 v_bar.refresh((screen_rect.w-little_surface[1].w)//6,little_surface[1].h,y,little_surface[1].h,False,colors=utilities.colors)
                             except:
                                 v_bar.refresh((screen_rect.w-little_surface[1].w)//8,little_surface[1].h,y,little_surface[1].h,False,colors=utilities.colors)
-                            v_bar.init_rect(left=little_surface[1].right,y=little_surface[1].y)
+                            v_bar.init_rect(left=little_surface[1].right+1,y=little_surface[1].y)
                             bar = v_bar
                         else:
                             bar = None
