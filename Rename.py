@@ -1,3 +1,10 @@
+# Copyright 2023 Pallone Daniel
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+# 
+# http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License
+
 import pygame
 from eyed3 import load as eyeload
 from os import listdir as oslistdir, chdir as oschdir, getenv as osgetenv, system as ossystem, environ
@@ -3598,6 +3605,10 @@ class Drop(pygame.sprite.Sprite):
         
         self._hidder(self.file)
         
+    def __replaceNdeactivate(self, text_to_replace:str) -> None:
+        self.box.replaceText(text_to_replace)
+        self.active = False
+
     def __find(self) -> None:
         findet = filter(lambda y:self._finder(str(self.box),y),self.data)
         if findet != self.findet:
@@ -3610,7 +3621,7 @@ class Drop(pygame.sprite.Sprite):
                         bt_normal_color=self.colors[2],
                         bt_hover_color=self.colors[3],
                         bt_pressed_color=self.colors[3],
-                        func=self.box.replaceText,
+                        func=self.__replaceNdeactivate,
                         func_args=(f,),
                         utilities=utilities
                 )
@@ -4376,7 +4387,11 @@ if __name__ == "__main__":
 
                 if not self.__mp3:
                     self.__mp3 = eyeload(osjoin(self.path,self.file))
-                    if self.__mp3.tag.version<self.ID3_V24:
+
+                    if self.__mp3.tag is None:
+                        self.__mp3.initTag(self.ID3_V24)
+
+                    elif self.__mp3.tag.version<self.ID3_V24:
                         self.__mp3.tag.version=self.ID3_V24
 
                 return func(self,*args,**kwargs)
@@ -5483,6 +5498,7 @@ if __name__ == "__main__":
                 title = "Choose a song"
                 start = "Start"
                 options = "Options"
+                q = "Torna indietro"
 
                 v_bar = VerticalBar(utilities= utilities)
                 bar = None
@@ -5495,7 +5511,9 @@ if __name__ == "__main__":
                 else:
                     start_b = NormalButton(func=self.fastrun)
                 options_b = NormalButton(func=self.options,utilities=utilities)
-                g = pygame.sprite.Group(options_b,start_b)
+                q_b = NormalButton(func=self.utilities.booleans.breaker,utilities=utilities)
+                
+                g = pygame.sprite.Group(options_b,start_b, q_b)
 
                 self.utilities.booleans[1]=True
                 while self.utilities.booleans[1]:
@@ -5542,12 +5560,15 @@ if __name__ == "__main__":
 
                         y+=text_heigh
 
-                    w = max(font.size(options)[0],font.size(start)[0])
+                    w = max(font.size(options)[0],font.size(start)[0],font.size(q)[0])
+                    q_b.refresh(font.render(q,True,self.utilities.colors["black"]),w,colors=utilities.colors)
+                    r = q_b.init_rect(centerx=screen_rect.w//4,centery=screen_rect.h-text_heigh)
+                    q_b.text_rect("center")
                     options_b.refresh(font.render(options,True,black),w,colors=utilities.colors)
-                    r = options_b.init_rect(centerx=screen_rect.w//3,centery=screen_rect.h-text_heigh)
+                    options_b.init_rect(centerx=r.centerx*2,centery=r.centery)
                     options_b.text_rect()
                     start_b.refresh(font.render(start,True,black),w,colors=utilities.colors)
-                    start_b.init_rect(centerx=screen_rect.w//3*2,centery=r.centery)
+                    start_b.init_rect(centerx=r.centerx*3,centery=r.centery)
                     start_b.text_rect()
 
                     # del r,font,bigger_font
