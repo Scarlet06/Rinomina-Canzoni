@@ -3607,6 +3607,7 @@ class Drop(pygame.sprite.Sprite):
         
     def __replaceNdeactivate(self, text_to_replace:str) -> None:
         self.box.replaceText(text_to_replace)
+        self.box.has_changed()
         self.active = False
 
     def __find(self) -> None:
@@ -3697,6 +3698,7 @@ class Drop(pygame.sprite.Sprite):
 
         if self.box.has_changed():
             self.__find()
+            self.active = True
 
         self.image.fill(self.utilities.colors[self.colors[1],100])
 
