@@ -6,7 +6,7 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License
 
 import pygame
-from eyed3 import load as eyeload
+from eyed3 import load as eyeload, AudioFile
 from os import listdir as oslistdir, chdir as oschdir, getenv as osgetenv, system as ossystem, environ
 from os.path import isfile as osisfile, isdir as osisdir, join as osjoin,\
     exists as osexists, abspath as osabspath, dirname as osdirname
@@ -4375,7 +4375,7 @@ if __name__ == "__main__":
         def __init__(self, path:str, file:str) -> None:
             self.path = path
             self.file = file
-            self.__mp3 = None
+            self.__mp3:AudioFile = None
             self.__comments = None
             self.__mp3__comments = None
         
