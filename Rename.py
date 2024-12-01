@@ -2344,8 +2344,8 @@ class TextBox(pygame.sprite.Sprite):
                         #                               cicle through
 
     from pyperclip import copy,paste
-    __copy=staticmethod(copy)
-    __paste=staticmethod(paste)
+    _copy=staticmethod(copy)
+    _paste=staticmethod(paste)
     del copy,paste
 
     def __init__(
@@ -3387,10 +3387,10 @@ class TextBox(pygame.sprite.Sprite):
         if self._selected:
 
             if self._k<self._kk:
-                self.__copy(self._text[self._k:self._kk])
+                self._copy(self._text[self._k:self._kk])
 
             else:
-                self.__copy(self._text[self._kk:self._k])
+                self._copy(self._text[self._kk:self._k])
 
             #it un-selects the text
             self._selected = False
@@ -3398,7 +3398,7 @@ class TextBox(pygame.sprite.Sprite):
         # if text is not selected but there is text written in
         # it 'copies' the whole text
         elif self._text:
-            self.__copy(self._text)
+            self._copy(self._text)
 
     def little_copy(self) -> None:
         '''
@@ -3420,10 +3420,10 @@ class TextBox(pygame.sprite.Sprite):
         if self._selected:
 
             if self._k<self._kk:
-                self.__copy(self._text[self._k:self._kk])
+                self._copy(self._text[self._k:self._kk])
 
             else:
-                self.__copy(self._text[self._kk:self._k])
+                self._copy(self._text[self._kk:self._k])
 
             #it deletes the selected text
             self.removeTextR()
@@ -3431,7 +3431,7 @@ class TextBox(pygame.sprite.Sprite):
         # if text is not selected but there is text written in
         # it 'copies' the whole text and then it deletes it
         elif self._text:
-            self.__copy(self._text)
+            self._copy(self._text)
             self.removeAll()
 
     def little_cut(self) -> None:
@@ -3450,7 +3450,7 @@ class TextBox(pygame.sprite.Sprite):
         '''
 
         #it get the text to 'paste'
-        self.addText(self.__paste())
+        self.addText(self._paste())
 
         self._selected = False
 
@@ -3774,7 +3774,7 @@ class RectengleText(pygame.sprite.Sprite):
     space=4         # [int]                 -> space on the border
 
     from pyperclip import copy
-    __copy=staticmethod(copy)
+    _copy=staticmethod(copy)
     del copy
 
     def __init__(
@@ -3893,7 +3893,7 @@ class RectengleText(pygame.sprite.Sprite):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 3 and hover:
                     try:
-                        self.__copy(self.text)
+                        self._copy(self.text)
                     except:
                         pass
                     break
@@ -4626,6 +4626,8 @@ if __name__ == "__main__":
                     if osexists(osjoin(self.path,k)):
                         self.quit()
                         raise NameError(f"Esiste già:{t}")
+                    if self.__mp3.path.endswith('MP3'):
+                        self.__mp3.path = self.__mp3.path.rsplit('.',1)[0]+'.mp3'
                     self.__mp3.rename(t)
                     self.file = k
 
@@ -5510,7 +5512,7 @@ if __name__ == "__main__":
                 extension= ".mp3"
 
                 self.list_mp3.clear()
-                self.list_mp3.extend(Song(self.utilities.settings["directory"],o) for o in oslistdir(self.utilities.settings["directory"]) if osisfile(osjoin(self.utilities.settings["directory"],o)) and o.endswith(extension))
+                self.list_mp3.extend(Song(self.utilities.settings["directory"],o) for o in oslistdir(self.utilities.settings["directory"]) if osisfile(osjoin(self.utilities.settings["directory"],o)) and o.lower().endswith(extension))
 
                 if not self.list_mp3:
                     raise NameError("Folder has no .mp3 files")
@@ -6144,6 +6146,13 @@ if __name__ == "__main__":
                                         g_diff.update(event_list,pos)
 
                                     else:
+                                        info,(*_,position) = list(infos.items())[0]
+                                        for event in event_list:
+                                            if event.type==pygame.MOUSEBUTTONDOWN and position.collidepoint(pos):
+                                                TextBox._copy(getattr(self.list_mp3[starting],info).rsplit('.',1)[0])
+                                                break
+                                        del position,info,_
+
                                         if bar:
                                             bar.update(event_list,pos)
                                             if shorter.get_rect().collidepoint(pos):
@@ -6155,6 +6164,7 @@ if __name__ == "__main__":
                                         else:
                                             g_super.update(event_list,pos)
                                             g.update(event_list,pos)
+                                            
                                         g_diff.update(event_list,pos)
 
                             if little_menu:
